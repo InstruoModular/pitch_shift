@@ -233,11 +233,54 @@ namespace
         return 0;
     }
 
-    int cmd_run(Plugin& p, const std::string& manifest_path, double tail_ms)
+    /** Some plugins output digital silence for their first seconds after load (async licence/model init;
+     *  Archetype: the first ~2 jobs). Feed low-level noise until the output has been non-silent for a
+     *  sustained second, so measured jobs never start inside that window. */
+    void prime(Plugin& p, int max_ms)
+    {
+        const int nin  = std::max(1, static_cast<int>(p.fx->numInputs));
+        const int nout = std::max(1, static_cast<int>(p.fx->numOutputs));
+        std::vector<std::vector<float>> ib(static_cast<size_t>(nin), std::vector<float>(static_cast<size_t>(g_block)));
+        std::vector<std::vector<float>> ob(static_cast<size_t>(nout), std::vector<float>(static_cast<size_t>(g_block)));
+        std::vector<float*> ins, outs;
+        for(auto& b : ib) ins.push_back(b.data());
+        for(auto& b : ob) outs.push_back(b.data());
+
+        uint32_t seed = 12345u;
+        const size_t max_samples = static_cast<size_t>(max_ms * g_sr / 1000.0);
+        const size_t need_live   = static_cast<size_t>(g_sr);   // 1 s of continuously non-silent output
+        size_t processed = 0, live = 0;
+        const auto t0 = std::chrono::steady_clock::now();
+
+        p.resume();
+        while(processed < max_samples && live < need_live)
+        {
+            for(int i = 0; i < g_block; i++)
+            {
+                seed = seed * 1664525u + 1013904223u;
+                const float x = 0.03f * (static_cast<float>(seed >> 8) / 8388608.f - 1.f);   // ~-36 dBFS noise
+                for(auto& b : ib) b[static_cast<size_t>(i)] = x;
+            }
+            for(auto& b : ob) std::fill(b.begin(), b.end(), 0.f);
+            p.fx->processReplacing(p.fx, ins.data(), outs.data(), g_block);
+            float e = 0.f;
+            for(float v : ob[0]) e += v * v;
+            live = (e > 1e-12f) ? live + static_cast<size_t>(g_block) : 0u;
+            processed += static_cast<size_t>(g_block);
+            if((processed / static_cast<size_t>(g_block)) % 256 == 0) pump_messages(1);
+        }
+        p.suspend();
+        const double wall = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        std::cerr << "vst2host: primed after " << (processed / g_sr) << " s of audio (" << wall << " s wall)"
+                  << (live < need_live ? " -- WARNING: output still silent at limit" : "") << "\n";
+    }
+
+    int cmd_run(Plugin& p, const std::string& manifest_path, double tail_ms, int prime_max_ms)
     {
         const auto jobs = manifest::load(manifest_path);
         if(jobs.empty()) { std::cerr << "empty manifest\n"; return 2; }
         setup(p);
+        std::string last_signature = "\x01";   // never equal to a real parameter set: first job always primes
 
         const int nin  = std::max(1, static_cast<int>(p.fx->numInputs));
         const int nout = std::max(1, static_cast<int>(p.fx->numOutputs));
@@ -266,6 +309,15 @@ namespace
                          + manifest::json_str(p.text(vst2::effGetParamDisplay, idx));
             }
             if(!ok) { failures++; continue; }
+
+            // Switching sections/bypasses can mute a plugin for seconds (Archetype: the job right after the
+            // isolation params were applied came out silent even after load-time priming). Re-prime
+            // whenever the parameter set changes, so no measured job starts inside that mute.
+            if(prime_max_ms > 0 && applied != last_signature)
+            {
+                prime(p, prime_max_ms);
+                last_signature = applied;
+            }
 
             // Suspend/resume around every job: JUCE-style plugins prepare+reset on resume, and any
             // latency change caused by the parameters is visible in initialDelay afterwards.
@@ -309,7 +361,7 @@ int main(int argc, char** argv)
     const std::string plugin = argc > 2 ? argv[2] : "";
     std::string manifest_path;
     std::vector<std::string> probe;
-    int points = 101, warmup_ms = 1500;
+    int points = 101, warmup_ms = 1500, prime_max_ms = 30000;
     double tail_ms = 1000.0;
     for(int i = 3; i + 1 < argc; i += 2)
     {
@@ -321,6 +373,7 @@ int main(int argc, char** argv)
         else if(k == "--probe")     probe = split_csv(v);
         else if(k == "--points")    points = std::max(2, std::atoi(v.c_str()));
         else if(k == "--warmup-ms") warmup_ms = std::atoi(v.c_str());
+        else if(k == "--prime-max-ms") prime_max_ms = std::atoi(v.c_str());   // 0 disables priming
     }
     if((cmd != "info" && cmd != "run") || plugin.empty())
     {
@@ -333,7 +386,7 @@ int main(int argc, char** argv)
     if(!load(plugin, p)) return 3;
     pump_messages(warmup_ms);
 
-    const int rc = (cmd == "info") ? cmd_info(p, probe, points) : cmd_run(p, manifest_path, tail_ms);
+    const int rc = (cmd == "info") ? cmd_info(p, probe, points) : cmd_run(p, manifest_path, tail_ms, prime_max_ms);
 
     p.dispatch(vst2::effClose);
     pump_messages(50);
