@@ -210,6 +210,15 @@
   Not yet proven that inharmonicity is the cause -> suites/buzzcheck.json isolates it (inharm=0 / no drift / both)
   for shift and Archetype. Archetype's low-note attack latency (8.5-16 ms on E2) and ~12 Hz AM hint it splices low
   notes less often -> min_grain sweep next.
+- BUZZCHECK (suites/buzzcheck.json; results/*/20260915-2143*-buzzcheck-buzz) REJECTS INHARMONICITY: shift buzzes on
+  perfectly harmonic low notes too -- E2 clean (no inharm, no drift) +5 2.48 vs Arch 0.22; E2 harmonic +5 2.49 vs 0.36;
+  old idealised pluck A2 -12 2.26 vs 0.13, E2 +5 1.94 vs 0.25; A2 clean +5 0.99 vs 0.16. The buzz is intrinsic to
+  shift's low-note splicing; the old suite just never measured this band. (Per-case values vary a lot with random
+  phases/pick noise: gtr_E2 -12 is 2.0 in real.json, 1.04 in buzzcheck -- judge on averages.)
+- New hypothesis: the FINE alignment window is 64 samples (min(corr_window, fine_corr_window=64)). On a low E
+  (582-smp period) that is ~1/9 of a cycle, so the fine NCC can lock a local maximum set by upper partials a few
+  samples off true alignment -> mid/high partials misaligned at every splice. High notes get many cycles per window
+  (fine). Causal windows mean a longer window no longer costs latency -> E22 fine_corr_window x max_corr_window.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
