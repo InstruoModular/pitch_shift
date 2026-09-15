@@ -13,7 +13,15 @@ tools/vst2host), shift param `Transpose`, isolation params in findings.md. DONE:
 characterisation, promoted to reference/baseline.json, E7 vs Archetype (E7 wins all quality metrics, loses
 latency 11.7 vs 8.2 ms median, 61 vs 45 max). Technique probes done (Archetype = time-domain pitch-adaptive
 splicer, no formant preservation; details + fast_exp2 bug in findings.md).
-**PAUSED 2026-09-15 by user request — RESUME HERE:**
+**STATUS 2026-09-15 (latency + chord-pitch work DONE):** shift.hpp/cpp = folded final winner
+(exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24;xfade_frac=0.125;blind_span_cap=538),
+identity-verified, promoted to reference/best_shift.json (results/shift-current/20260915-193854-full-final):
+lat 3.65 / max 46.31 ms vs Archetype 8.16 / 45.15, every quality metric ahead or within tolerance.
+Summary for humans: docs/RESULTS.md. Listening plugin: tools/listen_plugin (Shift Listen VST3, bit-exact).
+**Resume here:** waiting on the user's listening-test feedback. Open options are in docs/RESULTS.md "Known gaps".
+
+(History below: the pause notes from before the final steps.)
+**PAUSED 2026-09-15 by user request — (old) RESUME HERE:**
 1. E15a (xfade_frac sweep) was stopped mid-run: check `results/shift-lat_causal/*-full-E15a/metrics.partial.json`
    with `python analysis/sweep_table.py <dir> --shifts`; re-run missing settings (<= 3-4 settings per run):
    `python analysis/run_suite.py --target shift:lat_causal --suite full --params "exact_ratio=1;onset_runway=300;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24" --sweep "xfade_frac=0.25,0.125,0.0625" --workers 2 --no-report --tag E15a`

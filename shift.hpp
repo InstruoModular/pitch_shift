@@ -153,7 +153,7 @@ class Shift
         static constexpr float xfade_frac = 0.125f;    /* E15: crossfade = xfade_frac * grain / drift; also sets upshift headroom */
         static constexpr bool  causal_corr = true;   /* E13: correlation windows end at the head: no look-ahead in lag_floor */   /* lat: std::pow instead of fast_exp2 (up to -0.88 c error) */    // kernel reach + slack
         static constexpr float min_grain     = 192.0f;   /* lat: runtime-tunable */
-        static constexpr float    blind_span_cap = 269.0f;   /* E8: runtime-tunable (E4b cap) */   // floor on splice spacing
+        static constexpr float    blind_span_cap = 538.0f;   /* E8: runtime-tunable (E4b cap) */   // floor on splice spacing
         static constexpr float default_grain = 1536.0f;   /* E8: runtime-tunable */ /* E3b: was 768 */   // when no pitch is found
         static constexpr float    onset_grain      = 768.0f;   /* lat: runtime-tunable */   // E5: blind grain for the first 200 ms after an onset
         static constexpr uint32_t onset_grain_hold = 9600u;

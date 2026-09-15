@@ -123,6 +123,11 @@
   -> lat 3.66 / max 46.3 ms (Arch 8.16 / 45.2), sinad 68.1, poly 32.8, ppitch 8.67, flam 2.07, smear 0.97, lsd 2.02.
   CPU (tools/retime.py, min of 3, 12 heaviest jobs, block 32): worst block p50 21.9 %, max 22.1 % -- same as E7
   (21.5 / 23.1 %), so the latency changes cost no measurable CPU on the desktop.
+- E16 (user: better chord per-note pitch within ~1 ms of Archetype): blind_span_cap 269 -> 538 is free
+  (ppitch 8.67 -> 8.25 c, flam 2.07 -> 1.98, lat/max unchanged, CPU p50 22.1 % max 22.3 %). A longer causal blind
+  window (512) reaches 8.14 c but costs +4.4 ms max latency (50.7 vs Arch 45.2) -> rejected.
+  FINAL (folded into shift.hpp/cpp): exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;
+  causal_corr=1;guard_samples=24;xfade_frac=0.125;blind_span_cap=538.
 - A 2-knob x 4-setting (8-setting) full sweep got killed for memory at setting 7; keep full sweeps to <= 4
   settings per run (checkpoint saves finished settings in metrics.partial.json; sweep_table reads it).
 - CPU worst-block numbers in multi-setting sweeps swing 30-110 % with no code change (OS noise); re-time the
@@ -152,6 +157,10 @@
   loaded by the MSVC JUCE plugin via juce::DynamicLibrary from its own folder; post-build copies the DLL.
 - Verified bit-exact: VST3 in vsthost (host block 64) == shiftbench `current` delayed by exactly 32 samples
   (max diff <= 3e-19 on pluck/chord at +7/-12), reports latency 32, Transpose int param maps exactly.
+- GOTCHA (caught by the smoke test): after re-folding shift.cpp, building ShiftListen_VST3/_Standalone left the OLD
+  shift_capi.dll in the bundle (plugin didn't relink -> POST_BUILD copy never ran), smoke test FAILED with diffs up
+  to 0.19. Fixed with an always-run `ShiftListen_SyncDll` target (builds both formats, then copies the DLL).
+  Rule: after any shift.cpp change, rebuild `shift_capi` then `ShiftListen_SyncDll`, then run the smoke test.
 
 ## Machine
 - 12 logical CPUs, 7.8 GB RAM but typically only 0.6-2 GB free (VS Code, Dropbox, browser...): run ONE

@@ -34,10 +34,12 @@ target_link_libraries(ShiftListen
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
 
-foreach(format_target ShiftListen_VST3 ShiftListen_Standalone)
-    if(TARGET ${format_target})
-        add_custom_command(TARGET ${format_target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SHIFT_CAPI_DLL}" "$<TARGET_FILE_DIR:${format_target}>"
-            COMMENT "Copying shift_capi.dll next to ${format_target}")
-    endif()
-endforeach()
+# Always-run sync target: builds both formats, then copies the current shift_capi.dll next to each. A POST_BUILD step
+# alone is not enough -- when only shift.cpp changed the plugin doesn't relink, POST_BUILD never runs, and the bundle
+# keeps the OLD DSP (this happened once; the smoke test caught it). Build this target, not the format targets.
+add_custom_target(ShiftListen_SyncDll ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SHIFT_CAPI_DLL}" "$<TARGET_FILE_DIR:ShiftListen_VST3>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SHIFT_CAPI_DLL}" "$<TARGET_FILE_DIR:ShiftListen_Standalone>"
+    COMMENT "Syncing shift_capi.dll into Shift Listen VST3 and Standalone"
+    VERBATIM)
+add_dependencies(ShiftListen_SyncDll ShiftListen_VST3 ShiftListen_Standalone)

@@ -13,7 +13,7 @@ One knob (**Transpose**, −12…+12 semitones) around the firmware pitch shifte
 The DSP lives in `shift_capi.dll`, which sits inside the VST3 bundle (`Contents/x86_64-win/`) and next to the
 Standalone exe. It is the same `shift.cpp` the measurement harness runs, compiled with MSYS2 g++.
 Verified bit-exact: plugin output == `shiftbench current`, delayed by exactly one firmware block
-(scratchpad smoke test, pluck and chord at +7 / −12, host block 64).
+(`python tools/smoke_plugin.py`: pluck and chord at +7 / −12, host block 64). Re-run it after every rebuild.
 
 ## Install
 
@@ -36,12 +36,12 @@ Copy the whole `Shift Listen.vst3` folder to `C:\Program Files\Common Files\VST3
 $env:PATH = "C:\msys64\ucrt64\bin;$env:PATH"
 cmake --build build/bench --target shift_capi
 
-# 2. Plugin (MSVC tree; the post-build step copies the new DLL into the bundle and next to the exe)
-cmd /c '"C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" && cmake --build build/host --target ShiftListen_VST3 ShiftListen_Standalone -j 2'
+# 2. Plugin (MSVC tree). ShiftListen_SyncDll builds both formats AND always copies the current DLL into them.
+cmd /c '"C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" && cmake --build build/host --target ShiftListen_SyncDll -j 2'
 ```
 
-If only `shift.cpp` changed, step 1 plus re-running step 2 (to copy the DLL) is enough; then re-copy the bundle into
-the VST3 folder.
+Always build `ShiftListen_SyncDll`, not the format targets. When only `shift.cpp` changed, the plugin itself doesn't
+relink, so a post-build copy never runs and the bundle keeps the old DSP. Then re-copy the bundle into the VST3 folder.
 
 ## Why a DLL
 
