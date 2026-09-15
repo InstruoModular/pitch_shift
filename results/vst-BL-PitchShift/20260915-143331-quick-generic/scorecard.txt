@@ -1,0 +1,26 @@
+== vst:BL-PitchShift [Quality=1,TransBoost=0]  (20 cases)
+metric                      cand
+lat_ms                     44.14
+lat_ms_max                 59.97
+lat_jitter_ms               2.70
+lat_reported_ms            42.67
+pitch_err_cents             0.00
+pitch_err_p95_cents         0.00
+if_dev_cents                1.91
+track_err_cents             1.64
+poly_pitch_err_cents        0.03
+sinad_db                   60.50
+sinad_poly_db              10.65
+subharm_db               -119.72
+hf_junk_db               -109.84
+am_pp_db                    0.07
+am_rate_hz                 68.46
+lsd_db                      3.64
+pre_echo_db               -19.82
+flam_db                     1.38
+attack_smear                1.72
+disc_db                     0.76
+level_db                    4.40
+nonfinite                   0.00
+
+run: results\vst-BL-PitchShift\20260915-143331-quick-generic  jobs=20  render 0s  process 4s  measure 4s

@@ -1,0 +1,1 @@
+{"reported_latency": null, "block": 32, "sr": 48000, "variant": "env_match2", "cpu_ns_per_sample": 311.41, "cpu_worst_block_pct": 26.355, "params": {"shift": "7"}}

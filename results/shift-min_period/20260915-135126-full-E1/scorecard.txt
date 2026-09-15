@@ -1,0 +1,30 @@
+== shift:min_period [default]  (313 cases)  vs vst:TransBoost=0,Quality=1
+metric                      cand       ref   delta+  ok
+lat_ms                      9.32     41.06   +31.74  ok
+lat_ms_max                 35.70     68.04   +32.35  ok
+lat_jitter_ms               3.05      6.04    +2.99  ok
+lat_reported_ms                -     42.67           .
+pitch_err_cents             0.61      0.00    -0.61  XX
+pitch_err_p95_cents         0.71      0.00    -0.70  ok
+if_dev_cents                1.55      0.31    -1.24  XX
+track_err_cents             4.65      4.72    +0.07  ok
+poly_pitch_err_cents       12.24      1.43   -10.81  XX
+sinad_db                   59.01     81.04   -22.03  XX
+sinad_poly_db              26.60     27.86    -1.26  XX
+subharm_db                -93.38   -126.94   -33.56  ok
+hf_junk_db               -105.03   -114.47    -9.44  ok
+am_pp_db                    0.04      0.02    -0.02  ok
+am_rate_hz                 53.91     13.95           .
+lsd_db                      1.99      3.68    +1.69  ok
+pre_echo_db              -147.42    -18.84  +128.58  ok
+flam_db                     1.33      1.24    -0.09  ok
+attack_smear                0.87      1.80    +0.93  ok
+disc_db                     0.08      0.08    -0.00  ok
+level_db                    0.25      3.16    +2.91  ok
+silence_dbfs             -200.00   -200.00    -0.00  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         304.97         -           .
+cpu_worst_block_pct        62.49         -           .
+-- 5 metric(s) worse than ref beyond tolerance
+
+run: results\shift-min_period\20260915-135126-full-E1  jobs=313  render 0s  process 35s  measure 45s

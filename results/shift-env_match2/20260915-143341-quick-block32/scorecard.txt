@@ -1,0 +1,27 @@
+== shift:env_match2 [default]  (40 cases)
+metric                      cand
+lat_ms                     13.63
+lat_ms_max                 60.96
+lat_jitter_ms               4.57
+pitch_err_cents             0.23
+pitch_err_p95_cents         0.32
+if_dev_cents                0.38
+track_err_cents             5.40
+poly_pitch_err_cents        3.71
+sinad_db                   71.02
+sinad_poly_db              39.78
+subharm_db                -89.63
+hf_junk_db               -108.02
+am_pp_db                    0.05
+am_rate_hz                 10.09
+lsd_db                      1.89
+pre_echo_db              -124.46
+flam_db                     1.75
+attack_smear                1.08
+disc_db                     0.02
+level_db                    0.34
+nonfinite                   0.00
+cpu_ns_per_sample         336.94
+cpu_worst_block_pct        24.91
+
+run: results\shift-env_match2\20260915-143341-quick-block32  jobs=40  render 0s  process 4s  measure 7s

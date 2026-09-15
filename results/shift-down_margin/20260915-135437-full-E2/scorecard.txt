@@ -1,0 +1,30 @@
+== shift:down_margin [default]  (313 cases)  vs vst:TransBoost=0,Quality=1
+metric                      cand       ref   delta+  ok
+lat_ms                     10.37     41.06   +30.69  ok
+lat_ms_max                 35.95     68.04   +32.09  ok
+lat_jitter_ms               3.01      6.04    +3.03  ok
+lat_reported_ms                -     42.67           .
+pitch_err_cents             0.20      0.00    -0.20  ok
+pitch_err_p95_cents         0.26      0.00    -0.26  ok
+if_dev_cents                0.42      0.31    -0.12  ok
+track_err_cents             4.80      4.72    -0.08  ok
+poly_pitch_err_cents       11.87      1.43   -10.44  XX
+sinad_db                   64.00     81.04   -17.04  XX
+sinad_poly_db              26.72     27.86    -1.14  XX
+subharm_db                -94.80   -126.94   -32.14  ok
+hf_junk_db               -108.15   -114.47    -6.33  ok
+am_pp_db                    0.03      0.02    -0.01  ok
+am_rate_hz                 51.37     13.95           .
+lsd_db                      1.80      3.68    +1.88  ok
+pre_echo_db              -148.03    -18.84  +129.19  ok
+flam_db                     1.20      1.24    +0.04  ok
+attack_smear                0.88      1.80    +0.92  ok
+disc_db                     0.09      0.08    -0.01  ok
+level_db                    0.26      3.16    +2.90  ok
+silence_dbfs             -200.00   -200.00    -0.00  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         304.58         -           .
+cpu_worst_block_pct        75.48         -           .
+-- 3 metric(s) worse than ref beyond tolerance
+
+run: results\shift-down_margin\20260915-135437-full-E2  jobs=313  render 0s  process 35s  measure 45s

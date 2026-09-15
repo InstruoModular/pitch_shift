@@ -1,0 +1,91 @@
+== shift:tunable [default_grain=1024]  (72 cases)
+metric                      cand
+lat_ms                      9.91
+lat_ms_max                 35.95
+lat_jitter_ms               6.21
+poly_pitch_err_cents       10.65
+sinad_poly_db              28.04
+hf_junk_db               -111.24
+lsd_db                      2.98
+pre_echo_db               -57.82
+flam_db                     4.03
+attack_smear                1.21
+disc_db                     0.33
+level_db                    0.23
+nonfinite                   0.00
+cpu_ns_per_sample         300.88
+cpu_worst_block_pct        51.84
+
+== shift:tunable [default_grain=1280]  (72 cases)
+metric                      cand
+lat_ms                     10.36
+lat_ms_max                 37.17
+lat_jitter_ms               6.49
+poly_pitch_err_cents        9.99
+sinad_poly_db              33.02
+hf_junk_db               -112.84
+lsd_db                      2.81
+pre_echo_db               -61.20
+flam_db                     3.76
+attack_smear                1.25
+disc_db                     0.28
+level_db                    0.22
+nonfinite                   0.00
+cpu_ns_per_sample         297.49
+cpu_worst_block_pct        54.72
+
+== shift:tunable [default_grain=1536]  (72 cases)
+metric                      cand
+lat_ms                     10.36
+lat_ms_max                 35.95
+lat_jitter_ms               6.37
+poly_pitch_err_cents        9.19
+sinad_poly_db              33.14
+hf_junk_db               -113.03
+lsd_db                      2.80
+pre_echo_db               -60.13
+flam_db                     3.38
+attack_smear                1.21
+disc_db                     0.32
+level_db                    0.22
+nonfinite                   0.00
+cpu_ns_per_sample         297.52
+cpu_worst_block_pct        56.85
+
+== shift:tunable [default_grain=1792]  (72 cases)
+metric                      cand
+lat_ms                     10.36
+lat_ms_max                 35.95
+lat_jitter_ms               6.26
+poly_pitch_err_cents       12.64
+sinad_poly_db              28.77
+hf_junk_db               -112.04
+lsd_db                      2.89
+pre_echo_db               -58.08
+flam_db                     3.48
+attack_smear                1.21
+disc_db                     0.36
+level_db                    0.23
+nonfinite                   0.00
+cpu_ns_per_sample         278.61
+cpu_worst_block_pct        57.06
+
+== shift:tunable [default_grain=2048]  (72 cases)
+metric                      cand
+lat_ms                     10.24
+lat_ms_max                 35.95
+lat_jitter_ms               6.34
+poly_pitch_err_cents       10.94
+sinad_poly_db              28.80
+hf_junk_db               -111.98
+lsd_db                      2.86
+pre_echo_db               -60.19
+flam_db                     3.87
+attack_smear                1.21
+disc_db                     0.37
+level_db                    0.23
+nonfinite                   0.00
+cpu_ns_per_sample         291.38
+cpu_worst_block_pct        59.52
+
+run: results\shift-tunable\20260915-141759-poly-E8  jobs=360  render 0s  process 42s  measure 97s

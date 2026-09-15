@@ -1,0 +1,27 @@
+== shift:current [default]  (40 cases)
+metric                      cand
+lat_ms                     10.38
+lat_ms_max                 32.89
+lat_jitter_ms               3.20
+pitch_err_cents             0.19
+pitch_err_p95_cents         0.37
+if_dev_cents                0.72
+track_err_cents             4.53
+poly_pitch_err_cents        3.54
+sinad_db                   62.50
+sinad_poly_db              38.52
+subharm_db                -84.63
+hf_junk_db               -106.44
+am_pp_db                    0.03
+am_rate_hz                 48.14
+lsd_db                      1.92
+pre_echo_db              -135.25
+flam_db                     1.34
+attack_smear                0.90
+disc_db                    -0.05
+level_db                    0.10
+nonfinite                   0.00
+cpu_ns_per_sample         390.44
+cpu_worst_block_pct        84.51
+
+run: results\shift-current\20260915-132359-quick-first  jobs=40  render 0s  process 2s  measure 7s

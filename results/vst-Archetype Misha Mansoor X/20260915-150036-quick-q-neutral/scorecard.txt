@@ -1,0 +1,26 @@
+== vst:Archetype Misha Mansoor X [Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0]  (40 cases)
+metric                      cand
+lat_ms                      8.45
+lat_ms_max                 37.37
+lat_jitter_ms               5.77
+lat_reported_ms             1.75
+pitch_err_cents             0.58
+pitch_err_p95_cents         0.81
+if_dev_cents                2.70
+track_err_cents             4.99
+poly_pitch_err_cents        3.88
+sinad_db                   43.11
+sinad_poly_db              34.23
+subharm_db                -70.69
+hf_junk_db                -86.18
+am_pp_db                    0.29
+am_rate_hz                 11.75
+lsd_db                      2.51
+pre_echo_db              -103.15
+flam_db                     3.26
+attack_smear                1.13
+disc_db                     1.38
+level_db                    0.09
+nonfinite                   0.00
+
+run: results\vst-Archetype Misha Mansoor X\20260915-150036-quick-q-neutral  jobs=40  render 0s  process 19s  measure 7s

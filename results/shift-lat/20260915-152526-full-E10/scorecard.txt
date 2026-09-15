@@ -1,0 +1,55 @@
+== shift:lat [exact_ratio=0]  (313 cases)
+metric                      cand
+lat_ms                     11.70
+lat_ms_max                 60.96
+lat_jitter_ms               4.07
+pitch_err_cents             0.20
+pitch_err_p95_cents         0.25
+if_dev_cents                0.30
+track_err_cents             6.05
+poly_pitch_err_cents        8.38
+sinad_db                   68.29
+sinad_poly_db              32.86
+subharm_db                -98.08
+hf_junk_db               -109.27
+am_pp_db                    0.05
+am_rate_hz                 11.69
+lsd_db                      1.80
+pre_echo_db              -140.20
+flam_db                     1.14
+attack_smear                0.93
+disc_db                     0.07
+level_db                    0.38
+silence_dbfs             -200.00
+nonfinite                   0.00
+cpu_ns_per_sample         274.48
+cpu_worst_block_pct        44.25
+
+== shift:lat [exact_ratio=1]  (313 cases)
+metric                      cand
+lat_ms                     11.70
+lat_ms_max                 60.96
+lat_jitter_ms               4.07
+pitch_err_cents             0.07
+pitch_err_p95_cents         0.11
+if_dev_cents                0.17
+track_err_cents             6.03
+poly_pitch_err_cents        8.32
+sinad_db                   68.24
+sinad_poly_db              32.76
+subharm_db                -98.25
+hf_junk_db               -109.28
+am_pp_db                    0.05
+am_rate_hz                 12.40
+lsd_db                      1.78
+pre_echo_db              -140.26
+flam_db                     1.14
+attack_smear                0.93
+disc_db                     0.07
+level_db                    0.38
+silence_dbfs             -200.00
+nonfinite                   0.00
+cpu_ns_per_sample         271.61
+cpu_worst_block_pct        83.75
+
+run: results\shift-lat\20260915-152526-full-E10  jobs=626  render 0s  process 64s  measure 100s

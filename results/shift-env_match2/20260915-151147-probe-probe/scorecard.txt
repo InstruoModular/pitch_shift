@@ -1,0 +1,24 @@
+== shift:env_match2 [default]  (66 cases)
+metric                      cand
+lat_ms                     12.24
+lat_ms_max                 19.56
+lat_jitter_ms               1.39
+pitch_err_cents             0.21
+pitch_err_p95_cents         0.25
+if_dev_cents                0.33
+sinad_db                   71.60
+subharm_db               -100.31
+hf_junk_db                -95.20
+am_pp_db                    0.03
+am_rate_hz                  7.41
+lsd_db                      1.14
+pre_echo_db              -190.77
+flam_db                     0.22
+attack_smear                0.88
+disc_db                     0.11
+level_db                    0.43
+nonfinite                   0.00
+cpu_ns_per_sample         288.78
+cpu_worst_block_pct        30.12
+
+run: results\shift-env_match2\20260915-151147-probe-probe  jobs=66  render 0s  process 7s  measure 8s

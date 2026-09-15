@@ -1,0 +1,21 @@
+== shift:xlong_blind [default]  (72 cases)  vs vst:TransBoost=0,Quality=1
+metric                      cand       ref   delta+  ok
+lat_ms                     11.12     36.33   +25.21  ok
+lat_ms_max                 49.05     68.04   +18.99  ok
+lat_jitter_ms               8.76     11.90    +3.14  ok
+lat_reported_ms                -     42.67           .
+poly_pitch_err_cents       11.08      1.43    -9.65  XX
+sinad_poly_db              28.11     27.86    +0.26  ok
+hf_junk_db               -112.30   -119.78    -7.49  ok
+lsd_db                      2.87      4.17    +1.30  ok
+pre_echo_db               -59.12    -23.71   +35.41  ok
+flam_db                     3.70      1.86    -1.85  XX
+attack_smear                1.37      1.31    -0.06  ok
+disc_db                     0.43     -0.07    -0.50  ok
+level_db                    0.13      2.94    +2.81  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         275.85         -           .
+cpu_worst_block_pct       152.94         -           .
+-- 2 metric(s) worse than ref beyond tolerance
+
+run: results\shift-xlong_blind\20260915-140056-poly-poly  jobs=72  render 0s  process 8s  measure 25s

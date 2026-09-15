@@ -1,0 +1,37 @@
+== shift:tunable [fallback_corr_window=768]  (72 cases)
+metric                      cand
+lat_ms                     12.00
+lat_ms_max                 42.20
+lat_jitter_ms               7.75
+poly_pitch_err_cents        9.54
+sinad_poly_db              32.82
+hf_junk_db               -112.80
+lsd_db                      2.82
+pre_echo_db               -62.97
+flam_db                     4.41
+attack_smear                1.37
+disc_db                     0.28
+level_db                    0.23
+nonfinite                   0.00
+cpu_ns_per_sample         296.75
+cpu_worst_block_pct        69.48
+
+== shift:tunable [fallback_corr_window=1024]  (72 cases)
+metric                      cand
+lat_ms                     14.17
+lat_ms_max                 46.15
+lat_jitter_ms               8.20
+poly_pitch_err_cents        9.74
+sinad_poly_db              32.97
+hf_junk_db               -112.65
+lsd_db                      2.83
+pre_echo_db               -66.12
+flam_db                     4.05
+attack_smear                1.19
+disc_db                     0.26
+level_db                    0.23
+nonfinite                   0.00
+cpu_ns_per_sample         289.93
+cpu_worst_block_pct       111.30
+
+run: results\shift-tunable\20260915-142103-poly-E9a  jobs=144  render 0s  process 16s  measure 34s

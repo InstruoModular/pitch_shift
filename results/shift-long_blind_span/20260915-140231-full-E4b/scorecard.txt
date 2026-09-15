@@ -1,0 +1,30 @@
+== shift:long_blind_span [default]  (313 cases)  vs vst:TransBoost=0,Quality=1
+metric                      cand       ref   delta+  ok
+lat_ms                     11.53     41.06   +29.53  ok
+lat_ms_max                 49.35     68.04   +18.69  ok
+lat_jitter_ms               3.95      6.04    +2.09  ok
+lat_reported_ms                -     42.67           .
+pitch_err_cents             0.19      0.00    -0.19  ok
+pitch_err_p95_cents         0.25      0.00    -0.25  ok
+if_dev_cents                0.42      0.31    -0.11  ok
+track_err_cents             5.49      4.72    -0.77  ok
+poly_pitch_err_cents        9.81      1.43    -8.38  XX
+sinad_db                   63.95     81.04   -17.09  XX
+sinad_poly_db              32.54     27.86    +4.68  ok
+subharm_db                -94.67   -126.94   -32.27  ok
+hf_junk_db               -108.95   -114.47    -5.53  ok
+am_pp_db                    0.04      0.02    -0.02  ok
+am_rate_hz                 49.05     13.95           .
+lsd_db                      2.00      3.68    +1.68  ok
+pre_echo_db              -140.68    -18.84  +121.84  ok
+flam_db                     3.36      1.24    -2.12  XX
+attack_smear                0.87      1.80    +0.93  ok
+disc_db                     0.06      0.08    +0.02  ok
+level_db                    0.31      3.16    +2.85  ok
+silence_dbfs             -200.00   -200.00    -0.00  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         296.45         -           .
+cpu_worst_block_pct        68.97         -           .
+-- 3 metric(s) worse than ref beyond tolerance
+
+run: results\shift-long_blind_span\20260915-140231-full-E4b  jobs=313  render 0s  process 35s  measure 47s

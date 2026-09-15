@@ -1,0 +1,21 @@
+== shift:blind_margin [default]  (72 cases)  vs vst:TransBoost=0,Quality=1
+metric                      cand       ref   delta+  ok
+lat_ms                     10.28     36.33   +26.05  ok
+lat_ms_max                 39.83     68.04   +28.21  ok
+lat_jitter_ms               7.65     11.90    +4.25  ok
+lat_reported_ms                -     42.67           .
+poly_pitch_err_cents       11.18      1.43    -9.75  XX
+sinad_poly_db              26.63     27.86    -1.23  XX
+hf_junk_db               -110.55   -119.78    -9.24  ok
+lsd_db                      3.09      4.17    +1.08  ok
+pre_echo_db               -65.16    -23.71   +41.45  ok
+flam_db                     4.41      1.86    -2.56  XX
+attack_smear                1.08      1.31    +0.23  ok
+disc_db                     0.37     -0.07    -0.44  ok
+level_db                    0.12      2.94    +2.82  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         279.85         -           .
+cpu_worst_block_pct        66.75         -           .
+-- 3 metric(s) worse than ref beyond tolerance
+
+run: results\shift-blind_margin\20260915-135827-poly-poly  jobs=72  render 0s  process 8s  measure 39s

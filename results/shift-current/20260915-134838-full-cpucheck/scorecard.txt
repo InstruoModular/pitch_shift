@@ -1,0 +1,29 @@
+== shift:current [default]  (78 cases)  vs vst:TransBoost=0,Quality=1
+metric                      cand       ref   delta+  ok
+lat_ms                     12.26     39.24   +26.98  ok
+lat_ms_max                 22.41     67.00   +44.59  ok
+lat_jitter_ms               2.59      6.94    +4.35  ok
+lat_reported_ms                -     42.67           .
+pitch_err_cents             1.99      0.00    -1.98  XX
+pitch_err_p95_cents         2.15      0.00    -2.15  XX
+if_dev_cents                6.91      0.62    -6.30  XX
+track_err_cents             8.35      5.63    -2.71  XX
+poly_pitch_err_cents       16.97      1.98   -14.99  XX
+sinad_db                   58.79     78.71   -19.92  XX
+sinad_poly_db              23.89     22.92    +0.97  ok
+subharm_db                -91.88   -130.43   -38.55  ok
+hf_junk_db                -99.40   -114.21   -14.81  ok
+am_pp_db                    0.08      0.03    -0.05  ok
+am_rate_hz                 64.05     14.81           .
+lsd_db                      2.80      3.94    +1.14  ok
+pre_echo_db              -137.07    -18.09  +118.98  ok
+flam_db                     1.15      0.91    -0.24  ok
+attack_smear                0.90      1.81    +0.91  ok
+disc_db                     0.08      0.02    -0.06  ok
+level_db                    0.31      3.14    +2.83  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         321.00         -           .
+cpu_worst_block_pct        70.23         -           .
+-- 6 metric(s) worse than ref beyond tolerance
+
+run: results\shift-current\20260915-134838-full-cpucheck  jobs=79  render 0s  process 9s  measure 25s

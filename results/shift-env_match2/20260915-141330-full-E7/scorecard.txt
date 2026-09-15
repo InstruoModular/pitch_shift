@@ -1,0 +1,29 @@
+== shift:env_match2 [default]  (313 cases)  vs shift:onset_grain:default
+metric                      cand       ref   delta+  ok
+lat_ms                     11.58     11.55    -0.04  ok
+lat_ms_max                 35.95     35.98    +0.03  ok
+lat_jitter_ms               3.00      3.05    +0.05  ok
+pitch_err_cents             0.20      0.20    -0.00  ok
+pitch_err_p95_cents         0.27      0.27    -0.00  ok
+if_dev_cents                0.32      0.43    +0.11  ok
+track_err_cents             5.58      5.58    +0.00  ok
+poly_pitch_err_cents        9.19      9.19    +0.00  ok
+sinad_db                   67.98     63.87    +4.11  ok
+sinad_poly_db              33.14     32.13    +1.02  ok
+subharm_db                -98.08    -94.87    +3.20  ok
+hf_junk_db               -109.20   -109.13    +0.07  ok
+am_pp_db                    0.01      0.03    +0.02  ok
+am_rate_hz                 41.31     53.56           .
+lsd_db                      1.77      1.76    -0.01  ok
+pre_echo_db              -147.31   -147.49    -0.18  ok
+flam_db                     1.09      1.08    -0.01  ok
+attack_smear                0.89      0.87    -0.02  ok
+disc_db                     0.06      0.06    -0.00  ok
+level_db                    0.40      0.26    -0.14  ok
+silence_dbfs             -200.00   -200.00    -0.00  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         308.37    327.13   +18.76  ok
+cpu_worst_block_pct        84.36    270.84  +186.48  ok
+-- 0 metric(s) worse than ref beyond tolerance
+
+run: results\shift-env_match2\20260915-141330-full-E7  jobs=313  render 0s  process 38s  measure 67s

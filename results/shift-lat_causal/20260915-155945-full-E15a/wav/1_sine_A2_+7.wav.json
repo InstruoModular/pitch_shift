@@ -1,0 +1,1 @@
+{"reported_latency": null, "block": 32, "sr": 48000, "variant": "lat_causal", "cpu_ns_per_sample": 330.77, "cpu_worst_block_pct": 22.680, "params": {"exact_ratio": "1", "onset_runway": "300", "fallback_corr_window": "256", "onset_grain": "768", "causal_corr": "1", "guard_samples": "24", "xfade_frac": "0.125", "shift": "7"}}
