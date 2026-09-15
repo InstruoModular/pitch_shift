@@ -17,10 +17,10 @@ SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a
 SURFACE, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
 
 KEY_METRICS = ["lat_ms", "lat_ms_max", "pitch_err_cents", "if_dev_cents", "track_err_cents", "sinad_db",
-               "sinad_poly_db", "am_pp_db", "lsd_db", "flams", "attack_smear", "pre_echo_db", "level_db"]
-PLOT_METRICS = ["lat_ms", "if_dev_cents", "sinad_db", "sinad_poly_db", "am_pp_db", "lsd_db", "flams", "level_db"]
+               "sinad_poly_db", "am_pp_db", "lsd_db", "flam_db", "attack_smear", "pre_echo_db", "level_db"]
+PLOT_METRICS = ["lat_ms", "if_dev_cents", "sinad_db", "sinad_poly_db", "am_pp_db", "lsd_db", "flam_db", "level_db"]
 WORST = {"sinad_db": False, "sinad_poly_db": False, "if_dev_cents": True, "am_pp_db": True,
-         "flams": True, "lat_ms_max": True, "lsd_db": True, "track_err_cents": True}
+         "flam_db": True, "lat_ms_max": True, "lsd_db": True, "track_err_cents": True}
 
 
 def _fmt(v) -> str:
@@ -63,6 +63,7 @@ def _plots(run_dir: Path, data: dict, ref_records: list[dict] | None, ref_label:
     fig, axes = plt.subplots(rows, cols, figsize=(3.2 * cols, 2.5 * rows), squeeze=False)
     for ax, m in zip(axes.flat, present):
         agg = metrics.SCORECARD[m][0]
+        agg = "mean" if agg == "meanabs" else agg          # plots keep the sign (e.g. level loss)
         for (label, rs), color in zip(series, SERIES):
             by = _group(rs, "shift")
             ys = []

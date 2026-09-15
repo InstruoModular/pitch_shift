@@ -10,7 +10,15 @@
 - Single-file VST3 DLL, BlueLab / iPlug2 (OpenGL UI). Mono in/out accepted. Full dump: `reference/vst_info.json`.
 - Params (normalised): `Factor` semitones = norm*24-12 (continuous, 0.5 = 0 st) · `Quality` 4 steps (norm k/3)
   · `TransBoost` 0..100 % (continuous) · `Preset`, `Bypass`, unnamed idx5 (ignore).
-- Reported latency 2048 samples (42.7 ms) at Quality 0 -> almost certainly an FFT phase vocoder (4096 window?).
+- Reported latency 2048 samples (42.7 ms) at every Quality -> almost certainly an FFT phase vocoder (4096 window?).
+- Preliminary, quick suite, Quality 0 / TransBoost 0 (metrics still being validated):
+  measured latency ~40 ms median (xcorr agrees with reported); f0 error ~0.03 c; mono SINAD 11-38 dB
+  (worst on low notes shifted up); upshifts lose 4-10 dB of level; attack rise time ~4x ideal (smear 2.1);
+  pre-echo ~-15 dB; envelope ripple ~50 Hz (frame rate).
+
+## Metrics
+- Vocoder output has ~50 Hz frame-rate envelope ripple: per-onset latency must be anchored on a global
+  envelope xcorr (then refined +-25 ms), and derivative/flux onset detectors count the ripple as flams.
 
 ## Current Shift (shift.cpp)
 - Time-domain pitch-synchronous splicer: 32-tap sinc read, YIN on 4x decimated line, coarse+fine NCC splice,

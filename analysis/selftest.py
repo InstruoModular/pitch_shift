@@ -66,7 +66,7 @@ for key, semis in [("sine", 7), ("harm", -12), ("pluck", 12), ("chord", 7), ("vi
     if key == "vib":
         check(f"ideal {key}{semis:+d} track_err_cents", m.get("track_err_cents"), 0.0, 1.0)
     if key in ("pluck", "burst", "stacc"):
-        check(f"ideal {key}{semis:+d} flams", m.get("flams"), 0.0, 0.0)
+        check(f"ideal {key}{semis:+d} flam_db", m.get("flam_db"), 0.0, 0.1)
         check(f"ideal {key}{semis:+d} attack_smear", m.get("attack_smear"), 0.0, 0.15)
 
 # ---- (b) injected damage is recovered --------------------------------------------------------
@@ -113,7 +113,7 @@ for key in ("pluck", "stacc"):
         i = int(o * SR)
         y[i + d:i + d + L] += 0.8 * x[i:i + L]
     m = run(key, 12, y)
-    check(f"flam30ms {key} flams", m.get("flams"), 0.9, 2.0)
+    check(f"flam30ms {key} flam_db", m.get("flam_db"), 2.5, 40.0)
 
 # discontinuity: sign flip of the rest of the signal mid-steady (sine)
 s = SIG["sine"]

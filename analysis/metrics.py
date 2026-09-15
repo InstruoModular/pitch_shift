@@ -36,7 +36,7 @@ SCORECARD: dict[str, tuple[str, int, float, str]] = {
     "am_rate_hz":         ("median",  0, 0.0,  "dominant envelope modulation rate (info)"),
     "lsd_db":             ("mean",   -1, 0.5,  "1/6-oct log-spectral distance to ideal"),
     "pre_echo_db":        ("mean",   -1, 2.0,  "energy before onset rel. after"),
-    "flams":              ("mean",   -1, 0.1,  "extra onsets within 80 ms per attack"),
+    "flam_db":            ("mean",   -1, 1.0,  "excess HF re-attack rise 12-80 ms after onset vs ideal"),
     "attack_smear":       ("mean",   -1, 0.2,  "|log2| 10-90% rise time ratio vs ideal"),
     "disc_db":            ("mean",   -1, 2.0,  "discontinuity peak/RMS excess vs ideal"),
     "level_db":           ("meanabs",-1, 0.5,  "output level vs ideal"),
@@ -260,19 +260,18 @@ def hf_env_db(x: np.ndarray, frame: int = 144, hop: int = 24) -> np.ndarray:
     return db(rms_env(sps.sosfilt(_HF_SOS, x), frame, hop) ** 2)
 
 
-def count_flams(env_db: np.ndarray, hop_s: float, onset: float, win: float = 0.08) -> int | None:
-    """Secondary attacks: HF envelope peaks within 12 dB of the main one that rise >= 6 dB out of a dip.
-    A vocoder's 1-3 dB frame-rate ripple doesn't qualify; a repeated attack after decay does."""
-    i0, i1 = int((onset - 0.005) / hop_s), int((onset + win) / hop_s)
-    seg = env_db[max(i0, 0):i1]
-    if len(seg) < 5:
+def reattack_rise_db(env_db: np.ndarray, hop_s: float, onset: float, win: float = 0.08,
+                     skip: float = 0.012, look: float = 0.008) -> float | None:
+    """Largest HF-envelope rise (dB over the preceding `look`) between onset+skip and onset+win.
+    Absolute values overlap between real flams, vocoder ripple and low notes' natural period
+    structure, so callers report output minus ideal (flam_db), never a thresholded count."""
+    i0, i1 = int((onset + skip) / hop_s), min(int((onset + win) / hop_s), len(env_db))
+    lb = max(int(look / hop_s), 1)
+    if i1 - i0 < 3 or i0 - lb < 0:
         return None
-    top = seg.max()
-    if top < -100:
-        return None
-    seg = np.maximum(seg, top - 40.0)
-    peaks, _ = sps.find_peaks(seg, height=top - 12.0, prominence=6.0, distance=max(1, int(0.01 / hop_s)))
-    return max(len(peaks) - 1, 0)
+    floor = env_db[max(i0 - int(0.02 / hop_s), 0):i1].max() - 40.0
+    e = np.maximum(env_db, floor)
+    return float(max(e[i] - e[i - lb:i].min() for i in range(i0, i1)))
 
 
 def rise_time(env: np.ndarray, hop_s: float, onset: float, win: float = 0.08) -> float | None:
@@ -405,9 +404,9 @@ def measure(sig: Signal, semis: float, y: np.ndarray, reported_latency: int | No
         flams, smear, pre = [], [], []
         for j, o in enumerate(sig.onsets):
             win = min(0.08, (sig.onsets[j + 1] - o) * 0.9) if j + 1 < len(sig.onsets) else 0.08
-            cy, ci = count_flams(hy, hop_s, o, win), count_flams(hi_, hop_s, o, win)
-            if cy is not None and ci is not None:
-                flams.append(max(cy - ci, 0))
+            ry_, ri_ = reattack_rise_db(hy, hop_s, o, win), reattack_rise_db(hi_, hop_s, o, win)
+            if ry_ is not None and ri_ is not None:
+                flams.append(max(ry_ - ri_, 0.0))
             ry, ri = rise_time(ey, 24 / SR, o, win), rise_time(ei, 24 / SR, o, win)
             if ry and ri:
                 smear.append(abs(np.log2(ry / ri)))
@@ -417,7 +416,7 @@ def measure(sig: Signal, semis: float, y: np.ndarray, reported_latency: int | No
             e_post = np.sum(ya[i:i + int(0.05 * SR)] ** 2)
             if e_post > 0:
                 pre.append(float(db(e_pre) - db(e_post)))
-        m["flams"] = float(np.mean(flams)) if flams else None
+        m["flam_db"] = float(np.mean(flams)) if flams else None
         m["attack_smear"] = float(np.mean(smear)) if smear else None
         m["pre_echo_db"] = float(np.mean(pre)) if pre else None
 
