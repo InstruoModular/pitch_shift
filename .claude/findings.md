@@ -285,6 +285,12 @@
   Onset retire+restart (ola_onsets=1) helps upshifts (+12 fm 0.25 c = Arch, am 0.05 dB) but costs a little on
   downshifts (-12 fm 6.0 -> 7.3 c); kill_len 64 vs 128 identical. Decide on riff/strum material (synthetic onset
   metrics in the R3reg regression runs on suites real + full).
+- R3reg REGRESSION: on the synthetic suites the OLA candidate has a ~7 c constant pitch error (full: 7.7 c vs 0.06 prev,
+  Arch 0.27; real: 6.6 vs Arch 1.7), SINAD 29 dB (prev 68, Arch 43), poly pitch 18 c, LSD 3.8; latency 2.4 ms with
+  onsets. LESSON: the sax fm_rough band (3-70 Hz) is blind to a CONSTANT pitch offset -- always run the synthetic suites
+  (pitch_err, sinad) alongside real_audio.py. Diagnosis: sub-sample bias in grain alignment (prev.pos integer vs
+  candidates at floor(lag_c)); ~0.5 smp per 128-smp hop ~ 7 c. Fix = integer offsets from prev.pos (R3d).
+  CPU: NCC 97 offsets x 512 samples per spawn may genuinely spike a block (~900 % reported) -- retime after the fix.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
