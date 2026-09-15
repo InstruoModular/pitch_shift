@@ -72,6 +72,9 @@
   - CPU worst block 3471 % was OS noise: with per-block min over 2 passes (shiftbench now does this) worst
     is 70 % (decay_A3 -12), median job 45 %, 0/79 jobs over budget. But a consistent ~45 %-of-block peak on a
     desktop x86 = real per-block spike (splice search / YIN) -- a firmware risk to watch in every experiment.
+  - Min-of-2-passes still leaks OS noise occasionally (E5: 271 % / 215 % outliers re-timed at 44-45 %).
+    Before acting on a worst-block number, re-time the top jobs 3x (shiftbench run <variant> on a tiny
+    manifest from build/sigcache); trust p99 over max.
   - High sines are DETUNED, not broken (dbg: level exact, constant): A5 -12 +45 c, E6 -12 -110 c, D6 -12
     -37 c, A5 +12 -23 c; C6 exact at every shift. Hypothesis: `min_period = 60` clamps periods < 60 smp
     (> 800 Hz) while YIN tracks to 32 smp; grain becomes 4*60 = 240 and the tracked coarse search only spans

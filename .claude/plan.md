@@ -1,9 +1,11 @@
 # Pitch Shifter Analysis & Design — Plan
 
 ## Status / Resume here
-**Resume here:** Stage 6 — current best variant `down_margin` (E2, see experiments.md). Remaining fails vs
-baseline: poly_pitch_err (11.9 vs 1.4 c), sinad_db (64 vs 81), sinad_poly_db (26.7 vs 27.9). Next: pick E3
-from the per-case gap breakdown (findings.md). Firmware watch: cpu_worst_block_pct ~75 % on desktop. Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
+**Resume here:** Stage 6 — best candidate `onset_grain` (E5; lineage current -> min_period -> down_margin ->
+long_blind -> long_blind_span -> onset_grain). Fails vs baseline only poly_pitch_err (9.2 vs 1.4 c) and
+sinad_db (63.9 vs 81; plucks 46-50 dB, decay level-step hypothesis in findings.md). E5 promoted to
+reference/best_shift.json (CPU outliers were noise). In progress: E6 `env_match` (level-matched splices for
+pluck SINAD). After that: chord per-note pitch (splice-rate / multi-band / hybrid). Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
 `--workers 2 --procs 1`, and re-promote if it beats TB=0 on flam_db/attack_smear.
 
 - [x] Stage 0 — scaffolding (.claude, compat headers, gitignore, git init)
