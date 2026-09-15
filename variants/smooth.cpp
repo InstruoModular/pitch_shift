@@ -739,8 +739,8 @@ void Shift_smooth::process(const MonoDspBuffer& input, MonoDspBuffer& output)
             if(due && splice_armed && !searched)
             {
                 const float d = _splice_fine(head[active].pos, sign, splice_dd);
-                if(FILE* ev = events_file()) std::fprintf(ev, "%u S %.1f %.3f %.2f %.1f %d\n", w_abs - static_cast<uint32_t>(history_size), lag, splice_rho,
-                                          period, grain, period_valid ? 1 : 0);
+                if(FILE* ev = events_file()) std::fprintf(ev, "%u S %.1f %.3f %.2f %.1f %d %.3f\n", w_abs - static_cast<uint32_t>(history_size), lag, splice_rho,
+                                          period, grain, period_valid ? 1 : 0, d);
                 _start_fade(lag - (static_cast<float>(sign) * d), xfade, true);
                 searched = true;
             }

@@ -219,6 +219,12 @@
   (582-smp period) that is ~1/9 of a cycle, so the fine NCC can lock a local maximum set by upper partials a few
   samples off true alignment -> mid/high partials misaligned at every splice. High notes get many cycles per window
   (fine). Causal windows mean a longer window no longer costs latency -> E22 fine_corr_window x max_corr_window.
+- E22 + diag_align.py: fine window 64/256/512 leaves buzz identical, and splices are measured within 0.1-0.4 samples
+  of whole true periods (<4 deg at 1.5 kHz). Splice alignment is NOT the problem. Yet shift scores 2.48 dB on a
+  perfectly harmonic low E at +5 -> the METRIC is now suspect: a 1/3-oct band at 1-2 kHz holds several partials of a
+  low note whose beating modulates the band envelope at multiples of f0 (110 Hz here, inside 64-300 Hz), with a depth
+  that depends on the partials' RELATIVE PHASES, which splices change by constant offsets. Checking with a
+  phase-scramble test and modulation-line analysis (scratchpad diag_modspec.py) before trusting env_mod_hi_db further.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
