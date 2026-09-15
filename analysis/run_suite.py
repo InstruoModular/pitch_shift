@@ -91,7 +91,8 @@ def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path,
 
     # VST processing is single-threaded per process: split the manifest across processes.
     # shiftbench stays single-process so CPU timings aren't skewed by contention.
-    chunks = max(1, min(8, (os.cpu_count() or 2) // 2)) if target == "vst" else 1
+    # 4 plugin instances max: each loads the plugin's GL-heavy DLL, and this machine has ~8 GB RAM.
+    chunks = max(1, min(4, (os.cpu_count() or 2) // 2)) if target == "vst" else 1
     procs = []
     for c in range(chunks):
         part = jobs[c::chunks]
@@ -245,7 +246,10 @@ def cmd_run(a: argparse.Namespace) -> int:
     t_proc = time.time() - t
 
     t = time.time()
-    with ProcessPoolExecutor(max_workers=os.cpu_count()) as ex:
+    # Each worker imports numpy/scipy (~150 MB commit); uncapped pools exhaust the Windows paging
+    # file, especially with two suites running at once.
+    workers = a.workers or max(1, min(6, (os.cpu_count() or 2) - 1))
+    with ProcessPoolExecutor(max_workers=workers) as ex:
         records = list(ex.map(_measure_job, meas, chunksize=4))
     t_meas = time.time() - t
     errors = [r for r in records if "error" in r["metrics"]]
@@ -303,6 +307,7 @@ def main() -> None:
     ap.add_argument("--compare-setting", type=int, help="setting index when --compare is a multi-setting run")
     ap.add_argument("--gate", action="store_true", help="exit 1 if any metric worse than --compare beyond tolerance")
     ap.add_argument("--tag")
+    ap.add_argument("--workers", type=int, help="metric worker processes (default min(6, cpus-1))")
     ap.add_argument("--keep-wav", action="store_true")
     ap.add_argument("--no-report", action="store_true")
     ap.add_argument("--info", action="store_true")
