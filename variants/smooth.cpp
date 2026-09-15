@@ -861,7 +861,7 @@ float Shift_smooth::_ncc_frac(uint32_t rbase, double dist, int32_t sign, int32_t
 
 
 /* R3: continuous period-synchronous overlap-add. */
-void Shift_smooth::_ola_spawn(int youngest)
+void Shift_smooth::_ola_spawn(int youngest, bool at_min)
 {
     int slot = -1;
     for(int k = 0; k < static_cast<int>(grains.size()); k++)
@@ -886,8 +886,8 @@ void Shift_smooth::_ola_spawn(int youngest)
     const float target = need + ola_lag_extra + (0.5f * p_in);
     const float ceiling = static_cast<float>(history_size) - static_cast<float>(ola_window) - 96.f;
 
-    float lag_new = target;
-    if(youngest >= 0)
+    float lag_new = at_min ? need : target;   // R3c: onset restarts at the minimum lag
+    if(youngest >= 0 && !at_min)
     {
         const Head& prev = grains[static_cast<size_t>(youngest)].h;
         const float lag_nat = static_cast<float>(w_abs - prev.pos) - prev.frac;
@@ -952,6 +952,8 @@ void Shift_smooth::_ola_spawn(int youngest)
     g.age = 0u;
     g.len = len;
     g.active = true;
+    g.kill = false;
+    g.fade = 1.f;
 }
 
 void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& output)
@@ -970,6 +972,29 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
         }
         _write(x);
 
+        // R3c: same onset detector as the splice path
+        onset_lp   += (x - onset_lp) * onset_lp_coef;
+        const float hf = std::fabs(x - onset_lp);
+        onset_fast += (hf - onset_fast) * onset_fast_coef;
+        bool onset = false;
+        if(onset_hold > 0u)
+        {
+            onset_hold--;
+        }
+        else if(onset_fast > ((onset_ratio * onset_prev) + onset_floor))
+        {
+            onset      = true;
+            onset_hold = onset_refractory;
+        }
+        onset_cur = tairm::max(onset_cur, onset_fast);
+        if(onset_frame == 0u)
+        {
+            onset_prev  = onset_cur;
+            onset_cur   = 0.f;
+            onset_frame = onset_frame_len;
+        }
+        onset_frame--;
+
         if(!shifting)
         {
             output[i] = x;
@@ -977,11 +1002,17 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
             continue;
         }
 
+        if(onset && ola_onsets != 0)
+        {
+            for(auto& g : grains) if(g.active) g.kill = true;
+            _ola_spawn(-1, true);
+        }
+
         int youngest = -1;
         for(int k = 0; k < static_cast<int>(grains.size()); k++)
         {
             const OlaGrain& g = grains[static_cast<size_t>(k)];
-            if(g.active && (youngest < 0 || g.age < grains[static_cast<size_t>(youngest)].age)) youngest = k;
+            if(g.active && !g.kill && (youngest < 0 || g.age < grains[static_cast<size_t>(youngest)].age)) youngest = k;
         }
         if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / 2u)
         {
@@ -995,7 +1026,12 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
             if(!g.active) continue;
             const float ph = (static_cast<float>(g.age) + 0.5f) / static_cast<float>(g.len);
             const float s  = std::sin(idsp::pi * ph);
-            const float w  = s * s;
+            if(g.kill)   // R3c
+            {
+                g.fade -= 1.f / tairm::max(ola_kill_len, 1.f);
+                if(g.fade <= 0.f) { g.active = false; continue; }
+            }
+            const float w  = s * s * g.fade;
             acc  += w * _read(g.h);
             wsum += w;
             _advance(g.h);
@@ -1030,6 +1066,8 @@ template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, d
     if(name == "xfade_min")            { Shift_smooth::xfade_min = v;              return true; }
     if(name == "onset_reseat")         { onset_reseat = v > 0.5f;                  return true; }
     if(name == "onset_ratio")          { onset_ratio = v;                          return true; }
+    if(name == "ola_onsets")           { Shift_smooth::ola_onsets = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_kill_len")         { Shift_smooth::ola_kill_len = v;           return true; }
     if(name == "ola_mode")             { Shift_smooth::ola_mode = static_cast<int>(v + 0.5f); return true; }
     if(name == "ola_periods")          { Shift_smooth::ola_periods = v;            return true; }
     if(name == "ola_min_len")          { Shift_smooth::ola_min_len = v;            return true; }

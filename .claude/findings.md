@@ -281,6 +281,10 @@
   Best (ola periods 2, min_len 256, window 512, reach 24): fm 6.0/4.4/0.48/0.57 c vs Arch 5.8/3.5/0.46/0.24;
   am 0.18/0.24/0.14/0.12 vs 0.26/0.13/0.04/0.01 dB; harm_drop 12.7/11.5/0.2/6.2 vs 9.2/5.4/1.6/1.2; lat 3-5 vs 4-6 ms.
   Close to Archetype on the sax now; remaining gaps harmonicity at -12/-7/+12 and small AM on upshifts.
+- R3c: ola_reach 48 improves harmonicity again (11.6/8.1/-1.0/2.0 dB, beats Arch at +7/+12) with FM/AM unchanged.
+  Onset retire+restart (ola_onsets=1) helps upshifts (+12 fm 0.25 c = Arch, am 0.05 dB) but costs a little on
+  downshifts (-12 fm 6.0 -> 7.3 c); kill_len 64 vs 128 identical. Decide on riff/strum material (synthetic onset
+  metrics in the R3reg regression runs on suites real + full).
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,

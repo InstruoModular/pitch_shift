@@ -171,6 +171,8 @@ class Shift_smooth
         static inline int   ola_reach = 8;              /* fine alignment half-width when tracked */
         static inline int   ola_window = 128;           /* causal NCC window (input samples) */
         static inline float ola_fallback_period = 256.f;/* jump quantum when untracked */
+        static inline int   ola_onsets = 0;             /* R3c: onsets retire grains + restart at minimum lag */
+        static inline float ola_kill_len = 64.f;        /* R3c: fade-out of retired grains (output samples) */
         static inline float corr_preemph = 0.f;       /* smooth: fine-correlation pre-emphasis a (x[n]-a*x[n-1]); weights the
                                                          upper partials, whose alignment is what buzzes on real strings */
         static inline int   fine_reach_min = 0;       /* smooth: minimum fine search half-width (<= max_fine_reach) */
@@ -213,7 +215,7 @@ class Shift_smooth
         float   _splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) const;
         float   _ncc_frac(uint32_t rbase, double dist, int32_t sign, int32_t w) const;   // smooth
         void    _process_ola(const MonoDspBuffer& input, MonoDspBuffer& output);          // R3
-        void    _ola_spawn(int youngest);                                                 // R3
+        void    _ola_spawn(int youngest, bool at_min = false);                            // R3 (+R3c at_min)
         void    _start_fade(float target_lag, float length, bool match_level = false);
 
         /* ratio is at most 2, so the carry never runs more than twice. */
@@ -295,6 +297,8 @@ class Shift_smooth
             uint32_t age{0};
             uint32_t len{0};
             bool     active{false};
+            bool     kill{false};    // R3c: retiring after an onset
+            float    fade{1.f};      // R3c
         };
         std::array<OlaGrain, 4> grains{};   // R3
 
