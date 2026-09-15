@@ -13,7 +13,19 @@ tools/vst2host), shift param `Transpose`, isolation params in findings.md. DONE:
 characterisation, promoted to reference/baseline.json, E7 vs Archetype (E7 wins all quality metrics, loses
 latency 11.7 vs 8.2 ms median, 61 vs 45 max). Technique probes done (Archetype = time-domain pitch-adaptive
 splicer, no formant preservation; details + fast_exp2 bug in findings.md).
-**Resume here (latency work, user said "tackle the next steps, match Archetype latency; sr/block may change"):**
+**PAUSED 2026-09-15 by user request — RESUME HERE:**
+1. E15a (xfade_frac sweep) was stopped mid-run: check `results/shift-lat_causal/*-full-E15a/metrics.partial.json`
+   with `python analysis/sweep_table.py <dir> --shifts`; re-run missing settings (<= 3-4 settings per run):
+   `python analysis/run_suite.py --target shift:lat_causal --suite full --params "exact_ratio=1;onset_runway=300;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24" --sweep "xfade_frac=0.25,0.125,0.0625" --workers 2 --no-report --tag E15a`
+   then E15b: same with onset_runway=150.
+2. Pick winner (keep quality ahead of Archetype; max latency within tol of 45.2 ms).
+3. Re-time CPU of the winner (3x recipe in findings.md).
+4. Fold into firmware: `python tools/fold_variant.py lat_causal --set "<winner params>"` (stages to build/fold;
+   staged fold of the current best already syntax-checks OK), then `--out .` to overwrite shift.hpp/shift.cpp,
+   rebuild bench, run `shift:current` vs `shift:lat_causal --params <winner>` for identity, then full suite vs
+   reference/baseline.json and commit.
+
+**Latency work context (user said "tackle the next steps, match Archetype latency; sr/block may change"):**
 variant `lat_causal`, best so far = exact_ratio=1;onset_runway=300;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24
 (median 4.54 ms vs Arch 8.16; max 46.2 vs 45.2 within tol; all quality ahead). E15a (xfade_frac, runway 300)
 running in results/shift-lat_causal/*-full-E15a, then E15b (runway 150). Then: upshift attack latency,
