@@ -25,7 +25,14 @@ warble").** The metric suite missed modulation artefacts. Stages:
     ask the user to re-listen.
 **Progress:** M1 done (fm/am rough, env_mod) + M2 done (suites/real.json). M3: 3-70 Hz metrics did not match the
 ears; env_mod_hi_db (64-300 Hz, whole note) does (Arch 0.41 vs shift 0.60). Selftest for it added.
-**Resume here:** M3b diagnose the buzz (scratchpad diag_buzz.py: per-band + event spacing), then M4 on
+**STATUS 2026-09-16 late: BLOCKED ON USER INPUT.** env_mod_hi_db turned out phase-sensitive (invalid on harmonic
+content); with it discounted, no metric reproduces "audibly worse" (see findings.md). Disproved: YIN mis-tracking,
+splice alignment, crossfade length/law, onset re-seats in sustain, inharmonicity. Asked the user for: A/B setup
+(Archetype sections off?), where/what shifts they hear it, and DI recordings + bounces of both plugins.
+Next once answered: (1) analyse real audio with the harness (drop DI into suites as a new kind / remeasure bounces);
+(2) attack-region metrics (first 150 ms after each pick: re-seat/runway/onset grain) + riff/strum material;
+(3) fix env_mod_hi (mask f0-multiple lines, add phase-scramble selftest) or retire it.
+(old) **Resume here:** M3b diagnose the buzz (scratchpad diag_buzz.py: per-band + event spacing), then M4 on
 `variants/smooth` (built from lat_causal; knobs period_median3/jump/alpha/slew, subsample_refine, fine_corr_window,
 xfade_min) targeting env_mod_hi_db on suites/real.json vs Archetype (results kept-WAV runs; remeasure.py).
 

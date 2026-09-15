@@ -225,6 +225,16 @@
   low note whose beating modulates the band envelope at multiples of f0 (110 Hz here, inside 64-300 Hz), with a depth
   that depends on the partials' RELATIVE PHASES, which splices change by constant offsets. Checking with a
   phase-scramble test and modulation-line analysis (scratchpad diag_modspec.py) before trusting env_mod_hi_db further.
+- env_mod_hi_db IS INVALID on harmonic content (diag_modspec.py): a phase-scrambled IDEAL scores 0.48 (E2 clean +5),
+  2.68 (A2 clean +5), 1.70 dB (E2 pluck +5) against the ideal -- as big as the shift-vs-Archetype gap it "explained".
+  Its dominant lines are at output-f0 multiples (110/220 Hz) in ideal, shift AND Archetype = in-band partial beating,
+  depth set by relative partial phases. The apparent agreement with the listening verdict was coincidence.
+  env_mod_note_db (3-64 Hz) is far less phase-sensitive (0.04-0.14 dB on the same test).
+- Genuine splice-rate modulation: Archetype shows a line at its splice rate (27.6 Hz @ ~-28..-30 dB) on all three E2
+  cases; shift shows none. Phase-insensitive metrics (fm_rough, am_rough, env_mod_note) rate shift equal/smoother.
+  => The synthetic analysis still does NOT reproduce "audibly worse". Untested region: the first 50-80 ms after each
+  attack is excluded from every modulation metric, yet that is where onset re-seat, onset_runway 150, onset_grain 768
+  and 64-smp unaligned fades act on every pick (all shortened by the latency tuning) -- relevant to riffs/strumming.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
