@@ -272,6 +272,11 @@
   splice. Next (R3): continuous period-synchronous overlap-add -- output always the sum of 50 %-overlapped Hann grains
   on the resampled read, each new grain = natural continuation jumped by whole periods to hold a target lag, causally
   NCC-aligned, window-sum normalised. Formant-naive like Archetype (its probe showed no formant preservation).
+- R3 RESULT: the continuous overlap-add engine (variant smooth, ola_mode=1, ola_periods=2, ola_min_len=256) cuts sax FM
+  roughness 3-19x (-7: 23.1 -> 7.7 c; +12: 11.2 -> 0.58 c; Arch 3.5 / 0.24) and AM roughness 2.5-12x (+12 1.99 ->
+  0.16 dB; Arch 0.01) at 3-5 ms latency (Arch 4-6). The switched-head structure WAS the main warble source.
+  New weakness: harmonicity drop p90 rose to 13-17 dB (Arch 1.2-9.2): overlapping grains that aren't exactly aligned
+  blend into residual noise. Alignment of each new grain (currently 128-smp causal NCC, +-8) is the next lever.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,

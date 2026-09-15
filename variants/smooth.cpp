@@ -88,6 +88,7 @@ void Shift_smooth::reset()
     period_valid = false;
     period_hold  = 0u;
     found_count  = 0u;   // smooth
+    for(auto& g : grains) g = OlaGrain{};   // R3
 
     onset_lp        = 0.f;
     onset_fast      = 0.f;
@@ -646,6 +647,12 @@ void Shift_smooth::process(const MonoDspBuffer& input, MonoDspBuffer& output)
     _update_interval();
     _update_grain();
 
+    if(ola_mode != 0)   // R3: continuous overlap-add time repair
+    {
+        _process_ola(input, output);
+        return;
+    }
+
     /* The period search and the splice search are the expensive things that
      * happen at block rate, and no two of them may land in the same block. The
      * period search is elastic and simply takes a block longer to finish. The
@@ -852,6 +859,154 @@ float Shift_smooth::_ncc_frac(uint32_t rbase, double dist, int32_t sign, int32_t
     return num / std::sqrt(den);
 }
 
+
+/* R3: continuous period-synchronous overlap-add. */
+void Shift_smooth::_ola_spawn(int youngest)
+{
+    int slot = -1;
+    for(int k = 0; k < static_cast<int>(grains.size()); k++)
+    {
+        if(!grains[static_cast<size_t>(k)].active) { slot = k; break; }
+    }
+    if(slot < 0)   // all busy: replace the oldest
+    {
+        slot = 0;
+        for(int k = 1; k < static_cast<int>(grains.size()); k++)
+            if(grains[static_cast<size_t>(k)].age > grains[static_cast<size_t>(slot)].age) slot = k;
+    }
+
+    const float p_in = period_valid ? tairm::clamp(period, min_period, max_period) : ola_fallback_period;
+    const float len_f = tairm::clamp(ola_periods * p_in / ratio, ola_min_len, ola_max_len);
+    uint32_t len = static_cast<uint32_t>(len_f * 0.5f) * 2u;
+    if(len < 16u) len = 16u;
+
+    /* An upshift grain eats len*(ratio-1) samples of lag over its life, so it must start that far back, plus the
+     * interpolator's reach. Half a period on top leaves room to land on a whole-period jump. */
+    const float need   = guard_samples + 16.f + tairm::max(0.f, static_cast<float>(len) * (ratio - 1.f));
+    const float target = need + ola_lag_extra + (0.5f * p_in);
+    const float ceiling = static_cast<float>(history_size) - static_cast<float>(ola_window) - 96.f;
+
+    float lag_new = target;
+    if(youngest >= 0)
+    {
+        const Head& prev = grains[static_cast<size_t>(youngest)].h;
+        const float lag_nat = static_cast<float>(w_abs - prev.pos) - prev.frac;
+        int32_t reach = ola_reach;
+        if(period_valid)
+        {
+            const float m = std::round((lag_nat - target) / p_in);
+            lag_new = lag_nat - (m * p_in);
+        }
+        else
+        {
+            lag_new = target;
+            reach = tairm::max(static_cast<float>(reach), 0.5f * p_in) > 64.f ? 64 : static_cast<int32_t>(tairm::max(static_cast<float>(reach), 0.5f * p_in));
+        }
+        while(lag_new < need) lag_new += p_in;
+        if(lag_new > ceiling) lag_new = ceiling;
+
+        /* Causal NCC: the W samples just before the previous grain's read point vs the W samples before each
+         * candidate start. */
+        const int32_t W = ola_window;
+        const uint32_t ref_end = prev.pos;
+        std::array<float, 129> sc{};
+        float best = -1.0e30f;
+        int32_t best_i = -1;
+        const int32_t r = idsp::min<int32_t>(reach, 64);
+        for(int32_t j = -r; j <= r; j++)
+        {
+            const float lag_c = lag_new + static_cast<float>(j);
+            const size_t idx = static_cast<size_t>(j + r);
+            if(lag_c < need || lag_c > ceiling) { sc[idx] = -1.0e30f; continue; }
+            const uint32_t cand_end = w_abs - static_cast<uint32_t>(lag_c);
+            float num = 0.f;
+            float den = 1.0e-12f;
+            for(int32_t n = 1; n <= W; n++)
+            {
+                const float a = history[(ref_end  - static_cast<uint32_t>(n)) & history_mask];
+                const float b = history[(cand_end - static_cast<uint32_t>(n)) & history_mask];
+                num += a * b;
+                den += b * b;
+            }
+            sc[idx] = num / std::sqrt(den);
+            if(sc[idx] > best) { best = sc[idx]; best_i = static_cast<int32_t>(idx); }
+        }
+        if(best_i >= 0)
+        {
+            float off = static_cast<float>(best_i - r);
+            if(best_i > 0 && best_i < 2 * r && sc[static_cast<size_t>(best_i - 1)] > -1.0e29f && sc[static_cast<size_t>(best_i + 1)] > -1.0e29f)
+            {
+                const float a = sc[static_cast<size_t>(best_i - 1)];
+                const float b = sc[static_cast<size_t>(best_i)];
+                const float c = sc[static_cast<size_t>(best_i + 1)];
+                const float den = a - (2.f * b) + c;
+                if(den < -1.0e-9f) off += tairm::clamp(0.5f * (a - c) / den, -0.5f, 0.5f);
+            }
+            lag_new += off;
+        }
+    }
+    lag_new = tairm::clamp(lag_new, need, ceiling);
+
+    OlaGrain& g = grains[static_cast<size_t>(slot)];
+    _seek(g.h, lag_new);
+    g.age = 0u;
+    g.len = len;
+    g.active = true;
+}
+
+void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& output)
+{
+    const bool shifting = (interval != 0);
+
+    for(size_t i = 0; i < audio_block_size; i++)
+    {
+        float x = dc_block.process(input[i]);
+        if(anti_alias_on)
+        {
+            x = anti_alias[0].process(x);
+            x = anti_alias[1].process(x);
+            x = anti_alias[2].process(x);
+            x = anti_alias[3].process(x);
+        }
+        _write(x);
+
+        if(!shifting)
+        {
+            output[i] = x;
+            for(auto& g : grains) g.active = false;
+            continue;
+        }
+
+        int youngest = -1;
+        for(int k = 0; k < static_cast<int>(grains.size()); k++)
+        {
+            const OlaGrain& g = grains[static_cast<size_t>(k)];
+            if(g.active && (youngest < 0 || g.age < grains[static_cast<size_t>(youngest)].age)) youngest = k;
+        }
+        if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / 2u)
+        {
+            _ola_spawn(youngest);
+        }
+
+        float acc  = 0.f;
+        float wsum = 0.f;
+        for(auto& g : grains)
+        {
+            if(!g.active) continue;
+            const float ph = (static_cast<float>(g.age) + 0.5f) / static_cast<float>(g.len);
+            const float s  = std::sin(idsp::pi * ph);
+            const float w  = s * s;
+            acc  += w * _read(g.h);
+            wsum += w;
+            _advance(g.h);
+            if(++g.age >= g.len) g.active = false;
+        }
+        output[i] = (wsum > 1.0e-3f) ? (acc / wsum) : acc;
+    }
+
+    _pitch_tick();
+}
+
 template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, double value)
 {
     const float v = static_cast<float>(value);
@@ -875,6 +1030,14 @@ template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, d
     if(name == "xfade_min")            { Shift_smooth::xfade_min = v;              return true; }
     if(name == "onset_reseat")         { onset_reseat = v > 0.5f;                  return true; }
     if(name == "onset_ratio")          { onset_ratio = v;                          return true; }
+    if(name == "ola_mode")             { Shift_smooth::ola_mode = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_periods")          { Shift_smooth::ola_periods = v;            return true; }
+    if(name == "ola_min_len")          { Shift_smooth::ola_min_len = v;            return true; }
+    if(name == "ola_max_len")          { Shift_smooth::ola_max_len = v;            return true; }
+    if(name == "ola_lag_extra")        { Shift_smooth::ola_lag_extra = v;          return true; }
+    if(name == "ola_reach")            { Shift_smooth::ola_reach = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_window")           { Shift_smooth::ola_window = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_fallback_period")  { Shift_smooth::ola_fallback_period = v;    return true; }
     if(name == "corr_preemph")         { Shift_smooth::corr_preemph = v;           return true; }
     if(name == "fine_reach_min")       { Shift_smooth::fine_reach_min = static_cast<int>(v + 0.5f); return true; }
     if(name == "xfade_law")            { Shift_smooth::xfade_law = static_cast<int>(v + 0.5f); return true; }

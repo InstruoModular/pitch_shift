@@ -159,6 +159,18 @@ class Shift_smooth
         static inline float period_slew = 0.0f;       /* smooth: max relative period change per frame (0 = off) */
         static inline bool  subsample_refine = false; /* smooth: re-evaluate NCC at +-0.25 smp via the sinc read */
         static inline float xfade_min = 32.f;         /* smooth: crossfade floor (output samples) */
+        /* R3: continuous period-synchronous overlap-add engine (ola_mode = 1). The output is always the sum of
+         * 50 %-overlapped Hann grains read at `ratio`; each new grain continues where the previous one reads,
+         * jumped by whole periods to hold a target lag, then causally NCC-aligned. Mismatches blend over a
+         * grain instead of being switched at a splice. */
+        static inline int   ola_mode = 0;
+        static inline float ola_periods = 2.f;          /* grain length in (output) periods */
+        static inline float ola_min_len = 256.f;        /* output samples */
+        static inline float ola_max_len = 1024.f;       /* output samples */
+        static inline float ola_lag_extra = 0.f;        /* extra target lag (input samples) */
+        static inline int   ola_reach = 8;              /* fine alignment half-width when tracked */
+        static inline int   ola_window = 128;           /* causal NCC window (input samples) */
+        static inline float ola_fallback_period = 256.f;/* jump quantum when untracked */
         static inline float corr_preemph = 0.f;       /* smooth: fine-correlation pre-emphasis a (x[n]-a*x[n-1]); weights the
                                                          upper partials, whose alignment is what buzzes on real strings */
         static inline int   fine_reach_min = 0;       /* smooth: minimum fine search half-width (<= max_fine_reach) */
@@ -200,6 +212,8 @@ class Shift_smooth
         int32_t _splice_coarse(uint32_t ref, int32_t sign);
         float   _splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) const;
         float   _ncc_frac(uint32_t rbase, double dist, int32_t sign, int32_t w) const;   // smooth
+        void    _process_ola(const MonoDspBuffer& input, MonoDspBuffer& output);          // R3
+        void    _ola_spawn(int youngest);                                                 // R3
         void    _start_fade(float target_lag, float length, bool match_level = false);
 
         /* ratio is at most 2, so the carry never runs more than twice. */
@@ -274,6 +288,15 @@ class Shift_smooth
         std::array<float, 3> found_hist{};   // smooth: raw YIN estimates for the median
         uint32_t found_count{0};
         mutable float splice_rho{1.f};   // smooth: normalised correlation of the two heads at the last splice
+
+        struct OlaGrain
+        {
+            Head     h{};
+            uint32_t age{0};
+            uint32_t len{0};
+            bool     active{false};
+        };
+        std::array<OlaGrain, 4> grains{};   // R3
 
         // ---- onset -------------------------------------------------------
         float    onset_lp{0.f};
