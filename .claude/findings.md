@@ -298,6 +298,9 @@
   exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24;
   xfade_frac=0.125;blind_span_cap=538;ola_mode=1;ola_periods=2;ola_min_len=256;ola_window=512;ola_reach=48;
   ola_kill_len=64;ola_onsets=1. Pending: CPU retime, real + full suite regression.
+- R3e CPU: the OLA spawn's full-rate NCC (97 offsets x 512 smp) is a REAL block overrun: min-of-3 worst block 734-748 %
+  of the 32-smp budget on the desktop (mean ~10 %). Unusable for firmware. Fix: coarse search on the existing 4x
+  decimated line (25 x 128) + fine +-3 full-rate x 128 on the same integer-offset grid (~12x less work per spawn).
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
