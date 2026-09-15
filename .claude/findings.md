@@ -104,6 +104,11 @@
   mostly moves flams and max latency (768->384: flam 1.57->0.83, max 38->31 ms at w256) not the median. Shorter
   blind windows cost chord per-note pitch (ppitch 8.4 -> 9.5-9.8 c). First config passing EVERY metric vs Arch:
   exact_ratio=1, onset_runway=300, fallback_corr_window=384, onset_grain=768 (lat 7.41 / max 40.9 ms).
+- E13 CAUSAL correlation windows (end at the head, lag_floor = guard only) are the biggest single latency win:
+  median 7.1-7.4 -> ~5.0 ms (Arch 8.2) and downshifts now match/beat Arch (-12 5.1 vs 5.8, -7 4.0 vs 8.4,
+  -5 3.4 vs 4.8, -1 3.0 vs 9.2) with SINAD/poly/smear unchanged. Side effect: max latency 38-41 -> 46-54 ms
+  (chords). Best: causal + w256 + g768: lat 5.08 / max 46.4, ppitch 8.85, flam 1.68. Upshifts are now the
+  slower side (+7 7.7 vs Arch 4.5) -- they are set by onset_runway*(r-1).
 - CPU worst-block numbers in multi-setting sweeps swing 30-110 % with no code change (OS noise); re-time the
   final candidate with the 3x re-time recipe before trusting CPU.
 
