@@ -59,4 +59,31 @@
   quick subset (-12/+12) mono SINAD Q0 22.7 dB vs Q1 70.7 dB (latency unchanged ~43 ms). Judge only
   against the promoted baseline, never Q0.
 
+- E0 full-suite gap vs baseline (results/shift-current/20260915-134406-full-baseline): wins latency
+  (9.3 vs 41 ms), attack smear, pre-echo, level, LSD; loses pitch_err 1.36 c, poly_pitch 12 c, if_dev 4.7 c,
+  sinad 57.6 vs 81, sinad_poly 26.6 vs 27.9. Localised:
+  - sine_E6 downshifts catastrophic (SINAD -91..-121, if_dev 147-227 c, AM up to 9.5 dB): E6 period 36 smp
+    = 9 decimated lags, at yin_min_lag 8. Mean pitch/if_dev/sinad are dominated by this one signal;
+    harmonic 68 dB / 0.2 c, decay 55 dB, pluck 49 dB otherwise.
+  - Downshifts worse than upshifts on pitch (-12: 3.9 c, +12: 0.07 c).
+  - Chord flams 8-16 dB (E5power +5 15.9, Amin +12 10.3, Cmaj7 +5/+7 ~9): splicer repeats attacks on chords.
+  - dyad_min2_E4 poly SINAD -12..-1 dB (VST 3-5 dB): common period too long for the tracker.
+  - sweep_80_2k -12 track err 33 c.
+  - CPU worst block 3471 % was OS noise: with per-block min over 2 passes (shiftbench now does this) worst
+    is 70 % (decay_A3 -12), median job 45 %, 0/79 jobs over budget. But a consistent ~45 %-of-block peak on a
+    desktop x86 = real per-block spike (splice search / YIN) -- a firmware risk to watch in every experiment.
+  - High sines are DETUNED, not broken (dbg: level exact, constant): A5 -12 +45 c, E6 -12 -110 c, D6 -12
+    -37 c, A5 +12 -23 c; C6 exact at every shift. Hypothesis: `min_period = 60` clamps periods < 60 smp
+    (> 800 Hz) while YIN tracks to 32 smp; grain becomes 4*60 = 240 and the tracked coarse search only spans
+    +-12 smp, which contains no whole period multiple for A5 (54.5) / E6 (36.4) -> every splice off-phase.
+    C6 (6x45.9=229... in range), G6 (8x30.6=245) happen to fit. D6 unexplained (maybe YIN unlocked).
+    E1 confirmed it partly (A5 fixed) but downshift detune remains, always NEGATIVE, downshift-only, and
+    C6 -12 regressed once grain matched the period exactly. Second hypothesis (E2): in `_start_fade` the
+    downshift target `lag - d` is clamped to `lag_floor`, and lag_lo == lag_floor, so any d > grain (search
+    reach up to p/8+16) gets clamped -> jump is not a period multiple -> phase slip -> flat.
+
 ## Algorithm lessons
+- Splicer phase integrity: any clamp/limit applied to a correlation-chosen splice target silently turns a
+  period-multiple jump into an arbitrary one = steady detune (sign = which side the clamp is on). Give the
+  scheduler headroom equal to the search reach instead (E2: +~1 ms latency, fixed all high-note detune).
+- min_period must not exceed the tracker's smallest lag (E1).
