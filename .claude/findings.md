@@ -247,6 +247,8 @@
      +7: fm  7.82 vs 0.46   | am 0.83 vs 0.04    |  7.7 vs 1.6
     +12: fm 11.20 vs 0.24   | am 1.99 vs 0.01    |  9.7 vs 1.2
   latency similar (shift 3-4 ms, Arch 4-6 ms). mod_lines_db does not discriminate (drop it).
+  Metric floor check: shift:current at 0 st (pass-through) -> fm_rough 0.01 c, am_rough 0.01 dB, harm_drop 0.0 dB,
+  lat 0.0 ms: the reference-free measures read the shifter, not the analysis.
   => Real material reproduces "audibly worse" by 4-47x on FM roughness. OPTIMISE AGAINST real_audio.py on real
   material from here; keep the synthetic suites only as regression guards.
 - MECHANISM on the sax (scratchpad sax_events.py, variant smooth = folded winner + SHIFT_EVENTS):
@@ -256,6 +258,13 @@
   the granular warble. Synthetic tones hid it (rho ~1, few partials per period mismatch). Archetype's ~12 Hz AM
   suggests grains of tens of ms. Long grains needn't cost attack latency (onsets re-seat to the minimum lag); they
   add ~grain/2 of sustained delay. Next: min_grain x xfade_frac sweep on the sax (R1).
+- R1 (sax): longer grains improve harmonicity steadily but NOT FM roughness (mg2048 still 20-22 c at -12, and 17-35 ms
+  latency: long jumps land at a different vibrato/glide point, so pitch steps at each splice). Best: mg512 + xfade .5
+  (fm 16.3/14.5/4.1/5.9 c, 8-10 ms) -- still 3-25x Archetype. => The FM comes mostly from poor splice MATCHES on real
+  audio (rho ~0.6; fine window 64 < sax period ~107; per-frame period follows vibrato), which the synthetic suites
+  never exercised. Testing the user's original suggestions on real audio (R2). If still far off, consider a true
+  period-synchronous overlap-add (PSOLA-style) path for tracked voiced material: Archetype's near-zero FM on the sax
+  (+12: 0.24 c) suggests it does something epoch-synchronous rather than occasional two-head splices.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
