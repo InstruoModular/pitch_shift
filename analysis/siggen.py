@@ -141,6 +141,15 @@ def _rand_phases(count: int, rng: np.random.Generator) -> np.ndarray:
     return rng.uniform(0, 2 * np.pi, count)
 
 
+DEFAULT_FORMANTS = (700.0, 1200.0, 2600.0)
+
+
+def formant_gain(f: float | np.ndarray, formants=DEFAULT_FORMANTS, width_oct: float = 0.12, floor: float = 0.15):
+    """Fixed spectral envelope for the `formant` kind: Gaussian bumps in log-frequency (~+17 dB peaks)."""
+    f = np.asarray(f, dtype=float)
+    return floor + sum(np.exp(-0.5 * (np.log2(np.maximum(f, 1.0) / F) / width_oct) ** 2) for F in formants)
+
+
 # ---------------------------------------------------------------------------- builders
 
 def build(spec: dict) -> Signal:
@@ -181,6 +190,18 @@ def build(spec: dict) -> Signal:
             parts = _saw_partials(spec.get("partials", 20), 1.3)
             sig.notes.append(Note(const(f0), parts, _ar_env(n, lead, dur), onset=lead,
                                   phases=_rand_phases(len(parts), rng)))
+        sig.onsets, sig.steady = [lead], (lead + 0.3, lead + dur - 0.1)
+
+    elif kind == "formant":
+        # Harmonic source through a fixed spectral envelope. The ideal (like every ideal here) is
+        # formant-naive: partial amplitudes travel with the partials. probe.py compares the output's
+        # partial amplitudes with both hypotheses to tell whether a shifter preserves formants.
+        f0 = note_hz(spec.get("note", "A2"))
+        formants = tuple(spec.get("formants", DEFAULT_FORMANTS))
+        parts = [(k, float(formant_gain(k * f0, formants)) / np.sqrt(k))
+                 for k in range(1, int(MAX_PARTIAL_HZ // f0) + 1)]
+        sig.notes.append(Note(const(f0), parts, _ar_env(n, lead, dur), onset=lead,
+                              phases=_rand_phases(len(parts), rng)))
         sig.onsets, sig.steady = [lead], (lead + 0.3, lead + dur - 0.1)
 
     elif kind == "sweep":
@@ -238,6 +259,8 @@ def build(spec: dict) -> Signal:
         y = np.zeros(n)
         for i in range(int(spec.get("count", 4))):
             on = lead + i * float(spec.get("period", 0.5))
+            if int(on * SR) >= n:
+                break   # spec asked for more clicks than its duration holds
             y[int(on * SR)] = 1.0
             sig.onsets.append(on)
         sig.unpitched, sig.pitched = y, False

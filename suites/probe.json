@@ -1,0 +1,17 @@
+{
+  "name": "probe",
+  "shifts": [-12, -7, -1, 1, 7, 12],
+  "signals": [
+    {"id": "probe_click",      "kind": "click",    "count": 6, "period": 0.5, "dur": 3.0},
+    {"id": "probe_burst_E2",   "kind": "burst",    "note": "E2", "count": 4, "period": 0.5, "on": 0.25, "sine": false},
+    {"id": "probe_burst_A3",   "kind": "burst",    "note": "A3", "count": 4, "period": 0.5, "on": 0.25},
+    {"id": "probe_burst_E5",   "kind": "burst",    "note": "E5", "count": 4, "period": 0.5, "on": 0.25},
+    {"id": "probe_sine_E2",    "kind": "sine",     "note": "E2", "dur": 2.0},
+    {"id": "probe_sine_A3",    "kind": "sine",     "note": "A3", "dur": 2.0},
+    {"id": "probe_sine_E4",    "kind": "sine",     "note": "E4", "dur": 2.0},
+    {"id": "probe_sine_E5",    "kind": "sine",     "note": "E5", "dur": 2.0},
+    {"id": "probe_formant_A2", "kind": "formant",  "note": "A2", "dur": 2.0},
+    {"id": "probe_formant_E3", "kind": "formant",  "note": "E3", "dur": 2.0},
+    {"id": "probe_pluck_E2",   "kind": "pluck",    "note": "E2", "dur": 2.0}
+  ]
+}

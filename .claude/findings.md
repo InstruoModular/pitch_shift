@@ -18,6 +18,60 @@
   parameter's display texts (verified on BL: pitch_err 0.00 c). VST results go to results/vst-<stem>/
   (older BL runs are in results/vst/).
 
+## TARGET plugin: Archetype Misha Mansoor X.dll (Neural DSP) -- the one to match/beat
+- VST2 (exports VSTPluginMain; no GetPluginFactory), 105 MB, JUCE-based (preset XML is an AudioProcessorGraph:
+  nodes `transpose` / `transpose_stereo`, `doubler_bypass` with pitchAmnt, `misha_granular_fx`, glitch,
+  octaver, harmonizer icons). Intel IPP statically linked (no symbol names). Licence strings present
+  (NoAuthorizedLicensesFound) but it loads and processes on this machine.
+- Hosted by tools/vst2host (clean-room VST2 ABI, no SDK; JUCE's VST2 hosting needs the Steinberg SDK).
+  `info` 6 s incl. 3 s warm-up. Stereo in/out, 180 params, reports initialDelay = 84 samples (1.75 ms)
+  in the default preset.
+- `Transpose` (index 4): 25 integer steps -12..+12 st (display "N st"), norm 0.5 = 0 st; the display-text
+  mapping gives -12 -> 0.01, +12 -> 0.99. Quantised, so it's a fixed-interval shifter like shift.hpp.
+- Isolation recipe (all sections off, gains 0 dB) -- pass as --params:
+  `Input Gain=0.5;Output Gain=0.5;Gate Active=0;Doubler Active=0;Special FX Section Active=0;Pre FX Section Active=0;Amp Section Active=0;Cab Section Active=0;EQ Section Active=0;Post FX Section Active=0`
+  (the default preset has gate, compressor, Rhythm amp, cab, EQ ON).
+- Neutral chain at 0 st is bit-transparent apart from the reported 84-smp delay (SINAD 100 cap, LSD ~0,
+  latency 1.75 ms measured = reported): the transpose is fully bypassed at 0 st and the licence doesn't
+  block processing. (results/vst-Archetype Misha Mansoor X/20260915-145621-quick-neutral)
+- REPORTED LATENCY EXCLUDES THE SHIFTER: at +12 measured onset latency is 9-14 ms vs 1.75 ms reported.
+- First look at +12 (quick subset): pitch 0.00-0.44 c; SINAD sine 61, harmonic 41, pluck 28-30 dB;
+  poly fifth 37.7, Emaj 28.8 dB; no pre-echo (-97 dB); AM 0.18 dB @ 25.9 Hz; flam_db 2.17; attack smear
+  0.56. Reads like a low-latency time-domain grain/splice shifter (same family as shift.hpp), not a vocoder.
+- GOTCHA (confirmed by job-order test): the first ~2 jobs after load are digitally silent whatever the signal
+  (sine_E2 as jobs 1,2 silent; sine_A4 job 3 and sine_E2 job 4 fine). vst2host `run` now primes with
+  low-level noise until the output is live for 1 s (`--prime-max-ms`, default 30000, 0 disables) and logs
+  how long it took. Any run of this plugin made before that fix has its first jobs invalid.
+  Refined: load-time priming went live after 1.2 s of audio, yet the NEXT job (first with the isolation
+  params applied) was still silent -> the mute is triggered by PARAMETER CHANGES (section toggles), not load.
+  vst2host now re-primes whenever a job's parameter set differs from the previous job's.
+  Verified: job-order test all 4 jobs live (-17.5 dBFS); quick suite all 40 cases |level_db| < 1.5 dB.
+- First VALID quick scorecard (isolated, block 32; results/vst-Archetype Misha Mansoor X/20260915-150036-quick-q-neutral):
+  lat median 8.5 / max 37.4 ms (reported 1.75), pitch 0.58 c (p95 0.81), if_dev 2.7 c, track 5.0 c,
+  poly pitch 3.9 c, SINAD mono 43.1 / poly 34.2 dB, AM 0.29 dB @ 11.8 Hz, LSD 2.5, no pre-echo (-103 dB),
+  flam_db 3.3, attack smear 1.13, level 0.09 dB.
+  Per-case onset latency spans -5..20 ms (short on downshifts, 10-15 ms on upshifts); negative values are
+  an envelope-alignment artefact on smeared attacks -> use analysis/probe.py (burst threshold latency, click
+  response) for this plugin's latency, not lat_ms alone.
+- FULL suite, isolated, block 32 — PROMOTED to reference/baseline.json
+  (results/vst-Archetype Misha Mansoor X/20260915-150416-full-full-neutral, 313 cases):
+  lat 8.16 median / 45.2 max ms (jitter 4.3), pitch 0.27 c (p95 0.48), if_dev 1.83 c, track 6.29 c,
+  poly pitch 8.06 c, SINAD mono 43.0 / poly 26.6 dB, subharm -77, hf_junk -80, AM 0.28 dB @ 12.6 Hz,
+  LSD 2.64, no pre-echo (-125 dB), flam_db 2.46, attack smear 0.88, level |0.35| dB.
+- E7 (env_match2, block 32) vs Archetype, full suite (results/shift-env_match2/20260915-150812-full-vsArchetype):
+  E7 WINS every quality metric: pitch 0.20 vs 0.27 c, if_dev 0.30 vs 1.83, track 6.05 vs 6.29,
+  SINAD mono 68.3 vs 43.0, poly 32.9 vs 26.6, AM 0.05 vs 0.28, LSD 1.80 vs 2.64, flam 1.14 vs 2.46,
+  disc 0.07 vs 1.06, poly pitch 8.38 vs 8.06 (within tol), attack smear 0.93 vs 0.88 (within tol).
+  E7 LOSES only LATENCY: median 11.7 vs 8.2 ms, max 61.0 vs 45.2 ms. CPU worst block 44 % at block 32.
+  -> The job vs the real target is latency (and keep quality), not chords.
+
+## Probe tooling
+- analysis/probe.py validated on known answers (scratchpad validate_probe.py): 10 ms delay -> click first
+  arrival 9.8 ms, burst lat50 9.9-10.3 ms; ideal -> formant verdict 'naive' (corr 1.0). Sideband probe v1
+  was wrong (BH leakage at -95 dBc read as a sideband; levels relative to a cancelled carrier); fixed to
+  band-max reference, 12-bin guard, AM rate only when AM >= 0.02 dB, grain reported for both one-splice
+  (|1-r|/rate) and two-head overlap (2|1-r|/rate) schedulers (crude 40 ms two-head test: AM 25 Hz -> 40 ms).
+
 ## Reference plugin (BL-PitchShift.vst3) -- TEST plugin, archived in reference/plugins/
 - Single-file VST3 DLL, BlueLab / iPlug2 (OpenGL UI). Mono in/out accepted. Full dump: `reference/vst_info.json`.
 - Params (normalised): `Factor` semitones = norm*24-12 (continuous, 0.5 = 0 st) · `Quality` 4 steps (norm k/3)

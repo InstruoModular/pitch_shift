@@ -8,6 +8,12 @@ LSD. Still fails only poly_pitch_err (9.2 vs 1.4 c) and sinad_db (68.0 vs 81.0).
 untracked chords (Amin/Cmaj7/min2, ~21-24 c vs VST ~3.5 c). E8 (grain) and E9 (window, reach) confirmed
 it is STRUCTURAL for a single time-domain splicer.
 
+**NOW (2026-09-15):** target plugin = `Archetype Misha Mansoor X.dll` (Neural DSP, VST2, hosted by
+tools/vst2host), shift param `Transpose`, isolation params in findings.md. DONE: warm-up priming, full
+characterisation, promoted to reference/baseline.json, E7 vs Archetype (E7 wins all quality metrics, loses
+latency 11.7 vs 8.2 ms median, 61 vs 45 max). Doing: technique probes (suites/probe.json + analysis/probe.py)
+on Archetype and E7 -> report -> discuss next steps (latency reduction while keeping quality) with the user.
+
 **USER DECISIONS (2026-09-15):** BL-PitchShift was a TEST reference only — the user will supply the ACTUAL
 target VST. Re-run Stage 4 on it (`--plugin <file> --shift-param <name>`, see analyse-vst skill), promote it
 to reference/baseline.json (BL archived in reference/plugins/), re-run the best variant against it, THEN
