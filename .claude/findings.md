@@ -91,6 +91,12 @@
   SINAD 26.7->31.9 dB (past the VST's 27.9) and poly pitch error 11.9->8.4 c for +1.8 ms median latency.
   Extra splice headroom on that path (E3a) did nothing useful. The blind coarse span scales with grain, so
   longer grains also cost CPU (E3b worst block 106 %).
+  Not monotonic: 2304 (E4a) was worse than 1536 on every chord metric and 153 % CPU. Capping the blind
+  coarse span at 269 smp (E4b) keeps the 1536-grain gains (poly SINAD 32.5 dB) at 61 % CPU: rate, not
+  search reach, is what helps; reach only costs CPU.
+- Upshift splices jump BACK by the grain: any grain longer than the time since the last onset re-reads the
+  attack as an echo (E4b bursts +12: +37 dB flam_db at a 32 ms jump). Every note starts untracked, so the
+  blind grain governs attacks; long grains are only safe for sustained material.
 - Use `--suite poly` (72 jobs, ~40 s) for chord experiments.
 - E2 per-case gaps vs VST (results/shift-down_margin/*-full-E2):
   - Mono SINAD: VST plucks sit at the 100 dB metric cap (essentially ideal); ours 46-50 dB on plucks
