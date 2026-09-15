@@ -194,6 +194,17 @@
   E4 +7, and the low-note splice rates don't fit whole-period grains (E2 -12 ~68 splices/s vs 41 expected; A2 +5 grain
   ~0.7 period). Lead: YIN mis-tracks realistic low notes (stretched partials + pluck/pickup combs), so splice distances
   aren't period multiples -> phase jumps in the fundamental every splice. Checking per-splice period vs truth.
+- diag_period.py DISPROVED that lead: at every splice the tracked period is 0.998-1.000 x true on every realistic
+  note (E2/A2/G3/E4, up and down), 0 % jumps > 6 %, grains exactly whole periods, splice intervals as designed
+  (E2 -12: 1165 smp). YIN smoothing alone won't fix the buzz. (Earlier splice-rate figures were a counting-window
+  mistake.)
+- REVISED MECHANISM: INHARMONICITY vs a ONE-PERIOD splice. Partial k of a real string is at k f0 sqrt(1+B k^2); a
+  splice of exactly T=1/f0 keeps the fundamental coherent but jumps partial k by 2*pi*k*(sqrt(1+B k^2)-1) (E2: partial
+  18 ~1.5 kHz ~50 deg; >30 effectively random) every splice -> for E2 -12 a 41 Hz train of partial cancellations in the
+  630 Hz-3 kHz bands = the buzz. High notes have few partials there -> little buzz. Explains why crossfade length/law
+  (E17/E18) did nothing, and why perfectly harmonic synthetic tones never showed it.
+- Lever: the splice offset is chosen by an LF-dominated correlation; LF partials tolerate a few samples (5 smp = 3 deg
+  of E2) but HF partials don't -> pre-emphasised (HF-weighted) correlation + wider fine reach (E20).
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
