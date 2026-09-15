@@ -150,6 +150,22 @@
   (worst on low notes shifted up); upshifts lose 4-10 dB of level; attack rise time ~4x ideal (smear 2.1);
   pre-echo ~-15 dB; envelope ripple ~50 Hz (frame rate).
 
+## Listening verdict & modulation metrics (2026-09-16)
+- USER LISTENING TEST: final shift.hpp/cpp is audibly WORSE than Archetype: "granular distortions/warble".
+  The old suite said the opposite -> it was blind to modulation artefacts (SINAD's +-10 c partial tolerance
+  swallows near-carrier sidebands; if_dev/am_pp only looked at fundamentals of perfectly stable tones).
+- New metrics (analysis/metrics.py), all EXCESS over the ideal render, 3-70 Hz fluctuation band:
+  fm_rough_cents (complex demod of up to 8 isolated partials, energy-weighted FM rms), am_rough_db (same, AM),
+  env_mod_db (1/3-oct band log-envelope modulation, covers chords). Selftest: FM +-5 c @ 12 Hz -> ~3.5 c,
+  AM +-0.5 dB @ 20 Hz -> ~0.35 dB, ideals ~0, -40 dB noise doesn't register.
+- New realistic material: siggen kinds `guitar` / `gchord` (inharmonic partials B~4e-5*sqrt(f0/82), slow random
+  drift +-3 c, +6 c attack settling in 80 ms, pluck/pickup comb, pick noise); suites/real.json (8 notes incl.
+  vibrato, 5 chords, 8 shifts). Ideal renders all clean on every metric.
+- Archetype on suites/real.json (results/vst-Archetype Misha Mansoor X/20260915-210858-real-real, WAVs kept):
+  fm_rough 3.08 c, am_rough 0.47 dB, env_mod 0.49 dB, lat 8.30 / max 43.9 ms, pitch 1.69 c, if_dev 4.80,
+  sinad 35.9, poly 23.6, poly pitch 11.7, flam 1.57, smear 0.78.
+- analysis/remeasure.py re-scores any --keep-wav run with the current metrics (no re-processing).
+
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
   idsp::SVFilter::set_parameters wrapping std::tan) persists even with /std:c++latest; plus __builtin_memcpy.
