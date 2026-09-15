@@ -1,0 +1,55 @@
+== shift:lat_causal [exact_ratio=1,onset_runway=300,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125]  (313 cases)
+metric                      cand
+lat_ms                      4.17
+lat_ms_max                 46.31
+lat_jitter_ms               3.12
+pitch_err_cents             0.05
+pitch_err_p95_cents         0.09
+if_dev_cents                0.16
+track_err_cents             3.87
+poly_pitch_err_cents        8.78
+sinad_db                   68.31
+sinad_poly_db              32.51
+subharm_db                -97.10
+hf_junk_db               -106.94
+am_pp_db                    0.08
+am_rate_hz                 13.11
+lsd_db                      1.99
+pre_echo_db              -139.77
+flam_db                     1.82
+attack_smear                0.91
+disc_db                     0.05
+level_db                    0.35
+silence_dbfs             -200.00
+nonfinite                   0.00
+cpu_ns_per_sample         279.01
+cpu_worst_block_pct       129.53
+
+== shift:lat_causal [exact_ratio=1,onset_runway=300,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.0625]  (313 cases)
+metric                      cand
+lat_ms                      3.34
+lat_ms_max                 46.43
+lat_jitter_ms               3.52
+pitch_err_cents             0.05
+pitch_err_p95_cents         0.09
+if_dev_cents                0.16
+track_err_cents             3.84
+poly_pitch_err_cents        9.11
+sinad_db                   68.27
+sinad_poly_db              32.64
+subharm_db                -96.51
+hf_junk_db               -104.57
+am_pp_db                    0.08
+am_rate_hz                  9.98
+lsd_db                      2.10
+pre_echo_db              -138.03
+flam_db                     1.89
+attack_smear                0.90
+disc_db                     0.04
+level_db                    0.34
+silence_dbfs             -200.00
+nonfinite                   0.00
+cpu_ns_per_sample         257.54
+cpu_worst_block_pct        45.65
+
+run: results\shift-lat_causal\20260915-191451-full-E15a2  jobs=626  render 0s  process 66s  measure 165s

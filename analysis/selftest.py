@@ -134,6 +134,43 @@ x += 0.25 * s.render(-5).astype(np.float64)           # f/2 component at 1/4 amp
 m = run("sine", 7, x)
 check("subharm-12dB sine subharm_db", m.get("subharm_db"), -13.0, -11.0)
 
+# ---- modulation artefacts (granular warble) ---------------------------------------------------------------
+for key, semis in [("sine", 7), ("harm", -12), ("pluck", 12), ("chord", 7)]:
+    m = run(key, semis, SIG[key].render(semis))
+    check(f"ideal {key}{semis:+d} env_mod_db", m.get("env_mod_db"), 0.0, 0.05)
+    if key != "chord":
+        check(f"ideal {key}{semis:+d} fm_rough_cents", m.get("fm_rough_cents"), 0.0, 0.3)
+        check(f"ideal {key}{semis:+d} am_rough_db", m.get("am_rough_db"), 0.0, 0.05)
+
+# FM: +-5 cents at 12 Hz on every partial -> rms 5/sqrt(2) = 3.54 c
+for key in ("harm", "pluck"):
+    s = SIG[key]
+    note = s.notes[0]
+    orig = note.f_curve.copy()
+    t = np.arange(s.n) / SR
+    note.f_curve = orig * 2 ** (5.0 * np.sin(2 * np.pi * 12.0 * t) / 1200.0)
+    y = s.render(7)
+    note.f_curve = orig
+    m = run(key, 7, y)
+    check(f"FM5c@12Hz {key} fm_rough_cents", m.get("fm_rough_cents"), 3.0, 4.1)
+
+# AM: +-0.5 dB at 20 Hz -> rms 0.354 dB (partials and band envelopes)
+for key in ("harm", "chord"):
+    x = SIG[key].render(7).astype(np.float64)
+    t = np.arange(len(x)) / SR
+    m = run(key, 7, x * 10 ** (0.5 * np.sin(2 * np.pi * 20.0 * t) / 20))
+    check(f"AM0.5dB@20Hz {key} env_mod_db", m.get("env_mod_db"), 0.25, 0.45)
+    if key == "harm":
+        check(f"AM0.5dB@20Hz {key} am_rough_db", m.get("am_rough_db"), 0.28, 0.42)
+
+# -40 dB white noise must not read as warble
+s = SIG["harm"]
+x = s.render(7).astype(np.float64)
+p = np.mean(x[int(s.steady[0] * SR):int(s.steady[1] * SR)] ** 2)
+m = run("harm", 7, x + np.random.default_rng(3).standard_normal(len(x)) * np.sqrt(p * 1e-4))
+check("noise-40dB harm fm_rough_cents", m.get("fm_rough_cents"), 0.0, 1.0)
+check("noise-40dB harm env_mod_db", m.get("env_mod_db"), 0.0, 0.15)
+
 # silence
 m = run("sil", 7, np.full(SIG["sil"].n, 1e-4))
 check("silence 1e-4 silence_dbfs", m.get("silence_dbfs"), -81.0, -79.0)

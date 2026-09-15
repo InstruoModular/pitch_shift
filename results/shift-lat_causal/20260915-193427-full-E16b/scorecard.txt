@@ -1,0 +1,55 @@
+== shift:lat_causal [exact_ratio=1,onset_runway=150,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,fallback_corr_window=384]  (313 cases)
+metric                      cand
+lat_ms                      3.66
+lat_ms_max                 54.02
+lat_jitter_ms               3.25
+pitch_err_cents             0.06
+pitch_err_p95_cents         0.09
+if_dev_cents                0.17
+track_err_cents             3.83
+poly_pitch_err_cents        8.93
+sinad_db                   68.14
+sinad_poly_db              32.72
+subharm_db                -96.44
+hf_junk_db               -106.99
+am_pp_db                    0.08
+am_rate_hz                 11.66
+lsd_db                      2.03
+pre_echo_db              -132.77
+flam_db                     1.73
+attack_smear                0.97
+disc_db                     0.06
+level_db                    0.35
+silence_dbfs             -200.00
+nonfinite                   0.00
+cpu_ns_per_sample         272.26
+cpu_worst_block_pct        58.06
+
+== shift:lat_causal [exact_ratio=1,onset_runway=150,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,fallback_corr_window=512]  (313 cases)
+metric                      cand
+lat_ms                      3.63
+lat_ms_max                 50.68
+lat_jitter_ms               3.23
+pitch_err_cents             0.06
+pitch_err_p95_cents         0.09
+if_dev_cents                0.17
+track_err_cents             3.83
+poly_pitch_err_cents        8.14
+sinad_db                   68.14
+sinad_poly_db              32.86
+subharm_db                -96.44
+hf_junk_db               -107.05
+am_pp_db                    0.08
+am_rate_hz                 11.66
+lsd_db                      2.03
+pre_echo_db              -133.09
+flam_db                     1.72
+attack_smear                0.96
+disc_db                     0.05
+level_db                    0.35
+silence_dbfs             -200.00
+nonfinite                   0.00
+cpu_ns_per_sample         264.26
+cpu_worst_block_pct        56.20
+
+run: results\shift-lat_causal\20260915-193427-full-E16b  jobs=626  render 0s  process 63s  measure 128s

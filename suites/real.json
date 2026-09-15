@@ -1,0 +1,19 @@
+{
+  "name": "real",
+  "shifts": [-12, -7, -5, -1, 1, 5, 7, 12],
+  "signals": [
+    {"id": "gtr_E2",      "kind": "guitar", "note": "E2", "dur": 2.5},
+    {"id": "gtr_A2",      "kind": "guitar", "note": "A2", "dur": 2.5},
+    {"id": "gtr_D3",      "kind": "guitar", "note": "D3", "dur": 2.5},
+    {"id": "gtr_G3",      "kind": "guitar", "note": "G3", "dur": 2.5},
+    {"id": "gtr_B3",      "kind": "guitar", "note": "B3", "dur": 2.5},
+    {"id": "gtr_E4",      "kind": "guitar", "note": "E4", "dur": 2.5},
+    {"id": "gtr_E5",      "kind": "guitar", "note": "E5", "dur": 2.5},
+    {"id": "gtr_G3_vib",  "kind": "guitar", "note": "G3", "dur": 2.5, "drift_cents": 18, "drift_rate": 5.5},
+    {"id": "gch_E5power", "kind": "gchord", "notes": ["E2", "B2", "E3"], "dur": 3.0},
+    {"id": "gch_Emaj",    "kind": "gchord", "notes": ["E2", "B2", "E3", "G#3", "B3", "E4"], "dur": 3.0},
+    {"id": "gch_Amin",    "kind": "gchord", "notes": ["A2", "E3", "A3", "C4", "E4"], "dur": 3.0},
+    {"id": "gch_Cmaj7",   "kind": "gchord", "notes": ["C3", "E3", "G3", "B3", "E4"], "dur": 3.0},
+    {"id": "gch_Dmaj",    "kind": "gchord", "notes": ["D3", "A3", "D4", "F#4"], "dur": 3.0}
+  ]
+}

@@ -44,6 +44,10 @@ class Note:
     decay_tilt: float = 0.0      # extra per-partial exponential decay: exp(-tilt*(k-1)*t_since_onset)
     onset: float = 0.0           # seconds
     phases: np.ndarray | None = None
+    ratios: list[float] | None = None   # per-partial frequency multiple of f0 (inharmonic); default k
+
+    def ratio(self, i: int, k: int) -> float:
+        return self.ratios[i] if self.ratios is not None else float(k)
 
 
 @dataclass
@@ -66,11 +70,12 @@ class Signal:
             phase0 = 2 * np.pi * np.cumsum(f) / SR
             since = np.maximum(t - note.onset, 0.0)
             for i, (k, a) in enumerate(note.partials):
-                if k * note.f_curve.max() > MAX_PARTIAL_HZ:
+                r = note.ratio(i, k)
+                if r * note.f_curve.max() > MAX_PARTIAL_HZ:
                     continue   # dropped from input *and* ideal so they stay comparable
                 ph = note.phases[i] if note.phases is not None else 0.0
                 tilt = np.exp(-note.decay_tilt * (k - 1) * since) if note.decay_tilt else 1.0
-                y += a * tilt * note.env * np.sin(k * phase0 + ph)
+                y += a * tilt * note.env * np.sin(r * phase0 + ph)
         if self.unpitched is not None:
             y = y + self.unpitched
         return (y * self.gain).astype(np.float32)
@@ -84,7 +89,8 @@ class Signal:
             if note.env[i0:i1].max(initial=0.0) <= 1e-4:
                 continue
             f = float(np.median(note.f_curve[i0:i1])) * ratio
-            out += [k * f for k, _ in note.partials if k * note.f_curve.max() <= MAX_PARTIAL_HZ]
+            out += [note.ratio(i, k) * f for i, (k, _) in enumerate(note.partials)
+                    if note.ratio(i, k) * note.f_curve.max() <= MAX_PARTIAL_HZ]
         return sorted(out)
 
     def meta(self) -> dict:
@@ -191,6 +197,41 @@ def build(spec: dict) -> Signal:
             sig.notes.append(Note(const(f0), parts, _ar_env(n, lead, dur), onset=lead,
                                   phases=_rand_phases(len(parts), rng)))
         sig.onsets, sig.steady = [lead], (lead + 0.3, lead + dur - 0.1)
+
+    elif kind in ("guitar", "gchord"):
+        # Closer to a real DI: stretched (inharmonic) partials, slow random pitch drift plus a sharp attack that
+        # settles, pluck-position and pickup-position comb filtering, per-partial decay, pick noise. These are what
+        # make a period tracker jitter on real guitar, which clean harmonic tones never exercise.
+        notes = spec["notes"] if kind == "gchord" else [spec["note"]]
+        strum = float(spec.get("strum_ms", 20.0)) / 1000.0
+        t60 = float(spec.get("t60", 3.0))
+        drift_c = float(spec.get("drift_cents", 3.0))
+        drift_rate = float(spec.get("drift_rate", 1.5))
+        attack_c = float(spec.get("attack_cents", 6.0))
+        count = int(spec.get("partials", 40))
+        pluck_pos, pickup_pos = float(spec.get("pluck_pos", 0.18)), float(spec.get("pickup_pos", 0.22))
+        t = np.arange(n) / SR
+        for j, nm in enumerate(notes):
+            f0, on = note_hz(nm), lead + j * strum
+            B = float(spec.get("inharm", 4e-5 * (f0 / 82.4) ** 0.5))   # stiffer (plain) strings higher up
+            rates = rng.uniform(0.2, drift_rate, 3)
+            phs = rng.uniform(0, 2 * np.pi, 3)
+            wander = sum(np.sin(2 * np.pi * r * t + p) for r, p in zip(rates, phs))
+            wander *= drift_c / max(np.max(np.abs(wander)), 1e-9)
+            since = np.maximum(t - on, 0.0)
+            cents = wander + attack_c * np.exp(-since / 0.08) * (t >= on)
+            parts, ratios = [], []
+            for k in range(1, count + 1):
+                amp = abs(np.sin(k * np.pi * pluck_pos)) / k**1.5 * (0.35 + 0.65 * abs(np.sin(k * np.pi * pickup_pos)))
+                parts.append((k, amp + 1e-3 / k))
+                ratios.append(k * np.sqrt(1.0 + B * k * k))
+            sig.notes.append(Note(f0 * 2 ** (cents / 1200.0), parts, _pluck_env(n, on, dur, t60 * (82.4 / f0) ** 0.3),
+                                  decay_tilt=float(spec.get("tilt", 0.8)), onset=on,
+                                  phases=_rand_phases(len(parts), rng), ratios=ratios))
+            sig.onsets.append(on)
+        sig.unpitched = _pick_noise(n, sig.onsets, rng, 0.2 if kind == "guitar" else 0.12)
+        last = sig.onsets[-1]
+        sig.steady = (last + 0.3, min(last + 1.3, lead + dur - 0.1))
 
     elif kind == "formant":
         # Harmonic source through a fixed spectral envelope. The ideal (like every ideal here) is

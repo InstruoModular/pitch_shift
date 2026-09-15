@@ -12,10 +12,10 @@ from scipy import signal as sps
 from siggen import SR, Signal
 
 EPS = 1e-20
-MONO_KINDS = {"sine", "harmonic", "pluck", "decay"}
-POLY_KINDS = {"dyad", "chord"}
+MONO_KINDS = {"sine", "harmonic", "pluck", "decay", "guitar"}
+POLY_KINDS = {"dyad", "chord", "gchord"}
 TRACK_KINDS = {"vibrato", "bend", "sweep"}
-ONSET_KINDS = {"pluck", "chord", "burst", "staccato", "click"}
+ONSET_KINDS = {"pluck", "chord", "burst", "staccato", "click", "guitar", "gchord"}
 
 # metric -> (aggregate, direction (+1 higher better / -1 lower better), tolerance, description)
 SCORECARD: dict[str, tuple[str, int, float, str]] = {
@@ -39,6 +39,9 @@ SCORECARD: dict[str, tuple[str, int, float, str]] = {
     "flam_db":            ("mean",   -1, 1.0,  "excess HF re-attack rise 12-80 ms after onset vs ideal"),
     "attack_smear":       ("mean",   -1, 0.2,  "|log2| 10-90% rise time ratio vs ideal"),
     "disc_db":            ("mean",   -1, 2.0,  "discontinuity peak/RMS excess vs ideal"),
+    "fm_rough_cents":     ("mean",   -1, 0.3,  "partial FM 3-70 Hz rms excess vs ideal (granular warble)"),
+    "am_rough_db":        ("mean",   -1, 0.1,  "partial AM 3-70 Hz rms excess vs ideal (dB)"),
+    "env_mod_db":         ("mean",   -1, 0.1,  "1/3-oct band envelope modulation 3-64 Hz excess (dB rms)"),
     "level_db":           ("meanabs",-1, 0.5,  "output level vs ideal"),
     "silence_dbfs":       ("max",    -1, 3.0,  "output RMS for silent input"),
     "nonfinite":          ("sum",    -1, 0.0,  "NaN/Inf samples"),
@@ -299,6 +302,108 @@ def discontinuity_db(x: np.ndarray, t0: float, t1: float) -> float | None:
     return float(db(np.max(d2 / loc) ** 2))
 
 
+# ---------------------------------------------------------------------------- modulation (granular warble)
+#
+# Grain/splice shifters leave slow periodic FM and AM on every partial (sidebands a few to a few tens of Hz from
+# each partial). SINAD's +-10 cent partial tolerance counts those as signal and the fundamental-only IF/AM metrics
+# miss them on upper partials, so they are measured directly here, in the 3-70 Hz fluctuation/roughness range,
+# always as EXCESS over the ideal render (which carries any natural decay, drift or vibrato).
+
+MOD_LO, MOD_HI = 3.0, 70.0
+PITCHED_MOD_KINDS = {"sine", "harmonic", "pluck", "decay", "dyad", "chord", "vibrato", "bend", "sweep", "formant",
+                     "guitar", "gchord"}
+
+
+def band_rms(x: np.ndarray, fs: float, lo: float, hi: float) -> float:
+    """RMS of x restricted to [lo, hi] Hz after removing its linear trend (Parseval on a Tukey-windowed FFT)."""
+    n = len(x)
+    if n < 32 or hi <= lo:
+        return 0.0
+    t = np.arange(n)
+    x = x - np.polyval(np.polyfit(t, x, 1), t)
+    w = sps.windows.tukey(n, 0.2)
+    X = np.fft.rfft(x * w)
+    f = np.fft.rfftfreq(n, 1.0 / fs)
+    band = (f >= lo) & (f <= hi)
+    return float(np.sqrt(2.0 * np.sum(np.abs(X[band]) ** 2) / (n * np.sum(w**2))))
+
+
+def _demodulate(x: np.ndarray, fk: float, cutoff: float, dec: int = 24):
+    """Complex demodulation of the partial at fk: (cents deviation, amplitude dB, mean power, decimated rate)."""
+    t = np.arange(len(x)) / SR
+    base = x * np.exp(-2j * np.pi * fk * t)
+    sos = sps.butter(4, cutoff, fs=SR, output="sos")
+    z = sps.sosfiltfilt(sos, base.real)[::dec] + 1j * sps.sosfiltfilt(sos, base.imag)[::dec]
+    fs2 = SR / dec
+    trim = max(int(0.05 * len(z)), int(0.03 * fs2))
+    z = z[trim:len(z) - trim]
+    if len(z) < 64:
+        return None
+    amp = np.abs(z)
+    dev_hz = np.gradient(np.unwrap(np.angle(z))) * fs2 / (2 * np.pi)
+    cents_dev = 1200.0 * np.log2(np.maximum(fk + dev_hz, 1e-3) / fk)
+    return cents_dev, 20.0 * np.log10(amp + 1e-12), float(np.mean(amp**2)), fs2
+
+
+def partial_modulation(seg: np.ndarray, iseg: np.ndarray, partials: list[float], max_partials: int = 8) -> dict:
+    """Energy-weighted FM (cents rms) and AM (dB rms) excess over the ideal, 3-70 Hz, across isolated partials."""
+    ps = sorted(p for p in partials if 40.0 < p < 6000.0)
+    picked = []
+    for i, fk in enumerate(ps):
+        neighbours = [abs(fk - q) for j, q in enumerate(ps) if j != i]
+        spacing = min(neighbours) if neighbours else fk
+        cutoff = min(80.0, 0.4 * spacing)
+        if cutoff >= 8.0:
+            picked.append((fk, cutoff))
+    if not picked:
+        return {}
+    fm_num = am_num = wsum = 0.0
+    for fk, cutoff in picked[: max_partials * 3]:
+        do, di = _demodulate(seg, fk, cutoff), _demodulate(iseg, fk, cutoff)
+        if do is None or di is None:
+            continue
+        c_o, a_o, _, fs2 = do
+        c_i, a_i, p_i, _ = di
+        hi = min(MOD_HI, 0.9 * cutoff)
+        fm = max(band_rms(c_o, fs2, MOD_LO, hi) ** 2 - band_rms(c_i, fs2, MOD_LO, hi) ** 2, 0.0)
+        am = max(band_rms(a_o, fs2, MOD_LO, hi) ** 2 - band_rms(a_i, fs2, MOD_LO, hi) ** 2, 0.0)
+        fm_num += p_i * fm
+        am_num += p_i * am
+        wsum += p_i
+    if wsum <= 0:
+        return {}
+    return {"fm_rough_cents": float(np.sqrt(fm_num / wsum)), "am_rough_db": float(np.sqrt(am_num / wsum))}
+
+
+def envelope_modulation(seg: np.ndarray, iseg: np.ndarray, nfft: int = 512, hop: int = 96) -> float | None:
+    """Energy-weighted excess of 1/3-octave band log-envelope fluctuation (3-64 Hz, dB rms) over the ideal.
+    Catches grain AM on anything, including chords and partials too close together to demodulate."""
+    if len(seg) < 8 * nfft:
+        return None
+    fsm = SR / hop
+    edges = 200.0 * 2 ** (np.arange(0, np.log2(8000 / 200) * 3 + 1) / 3)
+
+    def bands(x):
+        f, _, Z = sps.stft(x, SR, nperseg=nfft, noverlap=nfft - hop, boundary=None, padded=False)
+        P = np.abs(Z) ** 2
+        return np.stack([P[(f >= lo) & (f < hi)].sum(axis=0) for lo, hi in zip(edges[:-1], edges[1:])], axis=1)
+
+    Bo, Bi = bands(seg), bands(iseg)
+    k = min(len(Bo), len(Bi))
+    Bo, Bi = Bo[:k], Bi[:k]
+    weight = Bi.mean(axis=0)
+    if weight.max() <= 0:
+        return None
+    active = weight > weight.max() * 1e-3
+    floor = Bi.max() * 1e-6
+    num = 0.0
+    for b in np.nonzero(active)[0]:
+        ro = band_rms(10 * np.log10(Bo[:, b] + floor), fsm, MOD_LO, 64.0)
+        ri = band_rms(10 * np.log10(Bi[:, b] + floor), fsm, MOD_LO, 64.0)
+        num += weight[b] * max(ro**2 - ri**2, 0.0)
+    return float(np.sqrt(num / weight[active].sum()))
+
+
 # ---------------------------------------------------------------------------- main entry
 
 def measure(sig: Signal, semis: float, y: np.ndarray, reported_latency: int | None = None, extra: dict | None = None) -> dict:
@@ -330,6 +435,19 @@ def measure(sig: Signal, semis: float, y: np.ndarray, reported_latency: int | No
         m["level_db"] = float(db(np.sum(ey[on] ** 2)) - db(np.sum(ei[on] ** 2)))
 
     m["lsd_db"] = log_spectral_distance(ya, ideal)
+
+    # modulation artefacts (granular warble): steady window when there is one, else the active span of the ideal
+    if kind in PITCHED_MOD_KINDS:
+        if sig.steady:
+            s0, s1 = int(sig.steady[0] * SR), int(sig.steady[1] * SR)
+        else:
+            on_idx = np.nonzero(np.abs(ideal) > np.max(np.abs(ideal)) * 1e-2)[0]
+            s0, s1 = (int(on_idx[0] + 0.05 * SR), int(on_idx[-1] - 0.05 * SR)) if len(on_idx) else (0, 0)
+        if s1 - s0 > int(0.3 * SR):
+            seg_m, iseg_m = ya[s0:s1], ideal[s0:s1]
+            m["env_mod_db"] = envelope_modulation(seg_m, iseg_m)
+            if sig.steady:
+                m.update(partial_modulation(seg_m, iseg_m, sig.expected_partials(semis, *sig.steady)))
 
     if sig.steady and kind in MONO_KINDS | POLY_KINDS:
         t0, t1 = sig.steady

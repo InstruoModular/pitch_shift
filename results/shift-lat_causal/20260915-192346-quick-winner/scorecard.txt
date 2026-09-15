@@ -1,0 +1,27 @@
+== shift:lat_causal [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125]  (40 cases)
+metric                      cand
+lat_ms                      4.23
+lat_ms_max                 46.31
+lat_jitter_ms               5.53
+pitch_err_cents             0.17
+pitch_err_p95_cents         0.24
+if_dev_cents                0.39
+track_err_cents             1.31
+poly_pitch_err_cents        4.24
+sinad_db                   70.18
+sinad_poly_db              39.24
+subharm_db                -88.85
+hf_junk_db               -104.26
+am_pp_db                    0.08
+am_rate_hz                  8.94
+lsd_db                      1.93
+pre_echo_db              -121.44
+flam_db                     1.77
+attack_smear                1.11
+disc_db                    -0.03
+level_db                    0.42
+nonfinite                   0.00
+cpu_ns_per_sample         318.58
+cpu_worst_block_pct        26.39
+
+run: results\shift-lat_causal\20260915-192346-quick-winner  jobs=40  render 0s  process 4s  measure 7s

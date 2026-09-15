@@ -13,7 +13,19 @@ tools/vst2host), shift param `Transpose`, isolation params in findings.md. DONE:
 characterisation, promoted to reference/baseline.json, E7 vs Archetype (E7 wins all quality metrics, loses
 latency 11.7 vs 8.2 ms median, 61 vs 45 max). Technique probes done (Archetype = time-domain pitch-adaptive
 splicer, no formant preservation; details + fast_exp2 bug in findings.md).
-**STATUS 2026-09-15 (latency + chord-pitch work DONE):** shift.hpp/cpp = folded final winner
+**NEW DIRECTION 2026-09-16 — LISTENING VERDICT: shift is audibly WORSE than Archetype ("granular distortions/
+warble").** The metric suite missed modulation artefacts. Stages:
+ M1 modulation metrics (fm_rough_cents, am_rough_db, env_mod_db in analysis/metrics.py) + selftest validation;
+ M2 realistic guitar material (inharmonic partials, slow pitch drift, pickup comb, chords of those) -> suites/real.json;
+ M3 re-measure Archetype vs current shift vs E7 on new metrics/material: metrics MUST rank Archetype smoother
+    before optimising (else fix the metrics / get DI recordings from the user);
+ M4 smoothness experiments: YIN period slew/median/glide, sub-sample interpolated alignment (upsampled NCC, longer
+    fine window, full normalisation), crossfade/grain length vs latency rebalanced on the new metrics;
+ M5 re-fold, rebuild Shift Listen (shift_capi + ShiftListen_SyncDll + tools/smoke_plugin.py), update docs/RESULTS.md,
+    ask the user to re-listen.
+**Resume here:** M1.
+
+**STATUS 2026-09-15 (latency + chord-pitch work DONE — superseded by the listening verdict above):** shift.hpp/cpp = folded final winner
 (exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24;xfade_frac=0.125;blind_span_cap=538),
 identity-verified, promoted to reference/best_shift.json (results/shift-current/20260915-193854-full-final):
 lat 3.65 / max 46.31 ms vs Archetype 8.16 / 45.15, every quality metric ahead or within tolerance.

@@ -1,0 +1,30 @@
+== shift:current [default]  (313 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      3.66      8.16    +4.50  ok
+lat_ms_max                 46.31     45.15    -1.16  XX
+lat_jitter_ms               3.96      4.31    +0.35  ok
+lat_reported_ms                -      1.75           .
+pitch_err_cents             0.06      0.27    +0.22  ok
+pitch_err_p95_cents         0.09      0.48    +0.39  ok
+if_dev_cents                0.17      1.83    +1.65  ok
+track_err_cents             3.85      6.29    +2.44  ok
+poly_pitch_err_cents        8.67      8.06    -0.60  ok
+sinad_db                   68.13     42.98   +25.15  ok
+sinad_poly_db              32.83     26.58    +6.25  ok
+subharm_db                -96.52    -77.19   +19.33  ok
+hf_junk_db               -106.87    -79.57   +27.30  ok
+am_pp_db                    0.08      0.28    +0.20  ok
+am_rate_hz                 11.66     12.58           .
+lsd_db                      2.02      2.64    +0.62  ok
+pre_echo_db              -135.26   -124.54   +10.72  ok
+flam_db                     2.07      2.46    +0.39  ok
+attack_smear                0.97      0.88    -0.09  ok
+disc_db                     0.04      1.06    +1.01  ok
+level_db                    0.35      0.35    +0.00  ok
+silence_dbfs             -200.00   -200.00    -0.00  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         264.50         -           .
+cpu_worst_block_pct       226.86         -           .
+-- 1 metric(s) worse than ref beyond tolerance
+
+run: results\shift-current\20260915-192359-full-folded-final  jobs=313  render 0s  process 31s  measure 58s
