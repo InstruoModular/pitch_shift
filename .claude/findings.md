@@ -87,3 +87,19 @@
   period-multiple jump into an arbitrary one = steady detune (sign = which side the clamp is on). Give the
   scheduler headroom equal to the search reach instead (E2: +~1 ms latency, fixed all high-note detune).
 - min_period must not exceed the tracker's smallest lag (E1).
+- Chords (untracked path): splice RATE is the lever. Halving it (default_grain 768->1536, E3b) took poly
+  SINAD 26.7->31.9 dB (past the VST's 27.9) and poly pitch error 11.9->8.4 c for +1.8 ms median latency.
+  Extra splice headroom on that path (E3a) did nothing useful. The blind coarse span scales with grain, so
+  longer grains also cost CPU (E3b worst block 106 %).
+- Use `--suite poly` (72 jobs, ~40 s) for chord experiments.
+- E2 per-case gaps vs VST (results/shift-down_margin/*-full-E2):
+  - Mono SINAD: VST plucks sit at the 100 dB metric cap (essentially ideal); ours 46-50 dB on plucks
+    (beats VST in only 27/144 mono cases). Hypothesis: on a decaying note the two heads are a grain apart
+    so their levels differ (~0.09 dB/splice at t60 3 s, grain ~4.5 ms) -> periodic level step -> ~-45 dB
+    sidebands. Candidates: envelope-matched crossfade gain, longer xfade.
+  - Poly: poly_pitch_err 37-67 c on Cmaj7/Amin/fourths (partials smeared, not cleanly shifted); poly SINAD
+    worst at -1 st (Cmaj7 14 vs 45 dB). Beats VST in 28/72 poly SINAD, 5/72 poly pitch cases.
+    Structural limit: a splice can be a period multiple of only one period family, so every other note
+    gets a phase jump per splice; detune/smear scales with splice rate. Time-domain splicing alone likely
+    can't match a vocoder on dense chords -> E3 quantifies the splice-rate/latency frontier before a
+    multi-band or hybrid-vocoder design.

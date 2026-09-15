@@ -1,0 +1,15 @@
+{
+  "name": "poly",
+  "shifts": [-12, -7, -5, -1, 1, 5, 7, 12],
+  "signals": [
+    {"id": "dyad_fifth_E2",  "kind": "dyad",  "notes": ["E2", "B2"], "dur": 2.0},
+    {"id": "dyad_fourth_A2", "kind": "dyad",  "notes": ["A2", "D3"], "dur": 2.0},
+    {"id": "dyad_octave_A2", "kind": "dyad",  "notes": ["A2", "A3"], "dur": 2.0},
+    {"id": "dyad_maj3_C4",   "kind": "dyad",  "notes": ["C4", "E4"], "dur": 2.0},
+    {"id": "dyad_min2_E4",   "kind": "dyad",  "notes": ["E4", "F4"], "dur": 2.0},
+    {"id": "chord_E5power",  "kind": "chord", "notes": ["E2", "B2", "E3"], "dur": 2.5},
+    {"id": "chord_Emaj",     "kind": "chord", "notes": ["E2", "B2", "E3", "G#3", "B3", "E4"], "dur": 2.5},
+    {"id": "chord_Amin",     "kind": "chord", "notes": ["A2", "E3", "A3", "C4", "E4"], "dur": 2.5},
+    {"id": "chord_Cmaj7",    "kind": "chord", "notes": ["C3", "E3", "G3", "B3", "E4"], "dur": 2.5}
+  ]
+}

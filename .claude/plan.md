@@ -1,9 +1,9 @@
 # Pitch Shifter Analysis & Design — Plan
 
 ## Status / Resume here
-**Resume here:** Stage 5 — baseline promoted (VST Quality 1, TransBoost 0: reference/baseline.json).
-Gap analysis of shift:current vs baseline in results/shift-current/*-full-baseline/scorecard.txt; then
-Stage 6 experiments. Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
+**Resume here:** Stage 6 — current best variant `down_margin` (E2, see experiments.md). Remaining fails vs
+baseline: poly_pitch_err (11.9 vs 1.4 c), sinad_db (64 vs 81), sinad_poly_db (26.7 vs 27.9). Next: pick E3
+from the per-case gap breakdown (findings.md). Firmware watch: cpu_worst_block_pct ~75 % on desktop. Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
 `--workers 2 --procs 1`, and re-promote if it beats TB=0 on flam_db/attack_smear.
 
 - [x] Stage 0 — scaffolding (.claude, compat headers, gitignore, git init)
@@ -11,7 +11,7 @@ Stage 6 experiments. Optional later (needs free RAM): TransBoost 0.5/1 at Q1, on
 - [x] Stage 2 — signal generator + suites (quick 10 sig x 4 shifts, full 40 x 8)
 - [x] Stage 3 — metrics + selftest (selftest OK; run_suite + report.py work)
 - [x] Stage 4 — reference characterisation -> reference/baseline.json (Q sweep; TransBoost sweep deferred: OOM)
-- [ ] Stage 5 — shiftbench harness + Shift baseline
+- [x] Stage 5 — shiftbench harness + Shift baseline (E0 in experiments.md)
 - [ ] Stage 6 — iteration loop (see .claude/experiments.md)
 - [ ] Stage 7 — finalise
 
