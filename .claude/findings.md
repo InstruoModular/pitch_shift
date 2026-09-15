@@ -277,6 +277,10 @@
   0.16 dB; Arch 0.01) at 3-5 ms latency (Arch 4-6). The switched-head structure WAS the main warble source.
   New weakness: harmonicity drop p90 rose to 13-17 dB (Arch 1.2-9.2): overlapping grains that aren't exactly aligned
   blend into residual noise. Alignment of each new grain (currently 128-smp causal NCC, +-8) is the next lever.
+- R3b: alignment REACH is the harmonicity lever (+-8 -> +-24: harm_drop 15 -> 0.2-12.7 dB), window 512 helps FM.
+  Best (ola periods 2, min_len 256, window 512, reach 24): fm 6.0/4.4/0.48/0.57 c vs Arch 5.8/3.5/0.46/0.24;
+  am 0.18/0.24/0.14/0.12 vs 0.26/0.13/0.04/0.01 dB; harm_drop 12.7/11.5/0.2/6.2 vs 9.2/5.4/1.6/1.2; lat 3-5 vs 4-6 ms.
+  Close to Archetype on the sax now; remaining gaps harmonicity at -12/-7/+12 and small AM on upshifts.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
