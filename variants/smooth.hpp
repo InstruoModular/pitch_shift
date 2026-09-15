@@ -158,7 +158,8 @@ class Shift_smooth
         static inline float period_alpha = 0.25f;     /* smooth: glide coefficient per YIN frame */
         static inline float period_slew = 0.0f;       /* smooth: max relative period change per frame (0 = off) */
         static inline bool  subsample_refine = false; /* smooth: re-evaluate NCC at +-0.25 smp via the sinc read */
-        static inline float xfade_min = 32.f;         /* smooth: crossfade floor (output samples) */    /* E15: crossfade = xfade_frac * grain / drift; also sets upshift headroom */
+        static inline float xfade_min = 32.f;         /* smooth: crossfade floor (output samples) */
+        static inline int   xfade_law = 0;            /* smooth: 0 amplitude smoothstep, 1 correlation-adaptive power, 2 equal power */    /* E15: crossfade = xfade_frac * grain / drift; also sets upshift headroom */
         static inline bool  causal_corr = false;   /* E13: correlation windows end at the head: no look-ahead in lag_floor */   /* lat: std::pow instead of fast_exp2 (up to -0.88 c error) */    // kernel reach + slack
         static inline float min_grain     = 192.f;   /* lat: runtime-tunable */
         static inline float    blind_span_cap = 269.f;   /* E8: runtime-tunable (E4b cap) */   // floor on splice spacing
@@ -269,6 +270,7 @@ class Shift_smooth
         uint32_t period_hold{0};
         std::array<float, 3> found_hist{};   // smooth: raw YIN estimates for the median
         uint32_t found_count{0};
+        mutable float splice_rho{1.f};   // smooth: normalised correlation of the two heads at the last splice
 
         // ---- onset -------------------------------------------------------
         float    onset_lp{0.f};

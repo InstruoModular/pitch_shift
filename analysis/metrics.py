@@ -42,6 +42,9 @@ SCORECARD: dict[str, tuple[str, int, float, str]] = {
     "fm_rough_cents":     ("mean",   -1, 0.3,  "partial FM 3-70 Hz rms excess vs ideal (granular warble)"),
     "am_rough_db":        ("mean",   -1, 0.1,  "partial AM 3-70 Hz rms excess vs ideal (dB)"),
     "env_mod_db":         ("mean",   -1, 0.1,  "1/3-oct band envelope modulation 3-64 Hz excess (dB rms)"),
+    "env_mod_note_db":    ("mean",   -1, 0.1,  "same, over the whole note (attack settle + decay), not just steady"),
+    "env_mod_hi_db":      ("mean",   -1, 0.1,  "band envelope modulation 64-300 Hz excess (granular buzz), whole note"),
+    "grain_noise_p90_db": ("mean",   -1, 1.0,  "short-time (150 ms) noise/signal excess vs ideal, p90 over the note"),
     "level_db":           ("meanabs",-1, 0.5,  "output level vs ideal"),
     "silence_dbfs":       ("max",    -1, 3.0,  "output RMS for silent input"),
     "nonfinite":          ("sum",    -1, 0.0,  "NaN/Inf samples"),
@@ -217,9 +220,10 @@ def inst_freq(x: np.ndarray, f_lo: float, f_hi: float) -> tuple[np.ndarray, np.n
 
 # ---------------------------------------------------------------------------- spectral
 
-def partial_energy_split(x: np.ndarray, partials: list[float], f_floor: float = 20.0) -> tuple[float, float, float]:
+def partial_energy_split(x: np.ndarray, partials: list[float], f_floor: float = 20.0,
+                         pad: int = 1 << 18) -> tuple[float, float, float]:
     """(energy near expected partials, energy elsewhere 20Hz-20k, energy above top partial)."""
-    mag, hpb = spectrum(x, 1 << 18, bh=True)
+    mag, hpb = spectrum(x, pad, bh=True)
     p = mag**2
     f = np.arange(len(p)) * hpb
     band = (f >= f_floor) & (f <= 20000)
@@ -375,13 +379,15 @@ def partial_modulation(seg: np.ndarray, iseg: np.ndarray, partials: list[float],
     return {"fm_rough_cents": float(np.sqrt(fm_num / wsum)), "am_rough_db": float(np.sqrt(am_num / wsum))}
 
 
-def envelope_modulation(seg: np.ndarray, iseg: np.ndarray, nfft: int = 512, hop: int = 96) -> float | None:
-    """Energy-weighted excess of 1/3-octave band log-envelope fluctuation (3-64 Hz, dB rms) over the ideal.
-    Catches grain AM on anything, including chords and partials too close together to demodulate."""
+def envelope_modulation(seg: np.ndarray, iseg: np.ndarray, nfft: int = 512, hop: int = 96, lo_hz: float = 200.0,
+                        mod_lo: float = MOD_LO, mod_hi: float = 64.0, weight_pow: float = 1.0) -> float | None:
+    """Weighted excess of 1/3-octave band log-envelope fluctuation (mod_lo..mod_hi Hz, dB rms) over the ideal.
+    Catches grain AM on anything, including chords and partials too close together to demodulate.
+    weight_pow < 1 compresses band energies so quieter mid/high bands (where roughness is heard) still count."""
     if len(seg) < 8 * nfft:
         return None
     fsm = SR / hop
-    edges = 200.0 * 2 ** (np.arange(0, np.log2(8000 / 200) * 3 + 1) / 3)
+    edges = lo_hz * 2 ** (np.arange(0, np.log2(8000 / lo_hz) * 3 + 1) / 3)
 
     def bands(x):
         f, _, Z = sps.stft(x, SR, nperseg=nfft, noverlap=nfft - hop, boundary=None, padded=False)
@@ -391,17 +397,55 @@ def envelope_modulation(seg: np.ndarray, iseg: np.ndarray, nfft: int = 512, hop:
     Bo, Bi = bands(seg), bands(iseg)
     k = min(len(Bo), len(Bi))
     Bo, Bi = Bo[:k], Bi[:k]
-    weight = Bi.mean(axis=0)
-    if weight.max() <= 0:
+    energy = Bi.mean(axis=0)
+    if energy.max() <= 0:
         return None
-    active = weight > weight.max() * 1e-3
+    active = energy > energy.max() * 1e-3
+    weight = energy ** weight_pow
     floor = Bi.max() * 1e-6
     num = 0.0
     for b in np.nonzero(active)[0]:
-        ro = band_rms(10 * np.log10(Bo[:, b] + floor), fsm, MOD_LO, 64.0)
-        ri = band_rms(10 * np.log10(Bi[:, b] + floor), fsm, MOD_LO, 64.0)
+        ro = band_rms(10 * np.log10(Bo[:, b] + floor), fsm, mod_lo, mod_hi)
+        ri = band_rms(10 * np.log10(Bi[:, b] + floor), fsm, mod_lo, mod_hi)
         num += weight[b] * max(ro**2 - ri**2, 0.0)
     return float(np.sqrt(num / weight[active].sum()))
+
+
+def note_span(ideal: np.ndarray, onsets: list[float]) -> tuple[int, int]:
+    """Whole-note analysis span: 50 ms after the first onset until the ideal's envelope falls 40 dB below its peak."""
+    env = rms_env(ideal, 2400, 480)
+    if env.max() <= 0:
+        return 0, 0
+    live = np.nonzero(env > env.max() * 1e-2)[0]
+    start = int(((onsets[0] if onsets else 0.0) + 0.05) * SR)
+    end = int(live[-1] * 480 + 2400) if len(live) else 0
+    return max(start, int(live[0] * 480)) if len(live) else start, min(end, len(ideal))
+
+
+def grain_noise_p90(ya: np.ndarray, ideal: np.ndarray, sig: Signal, semis: float, a: int, b: int,
+                    frame_s: float = 0.15, hop_s: float = 0.05) -> float | None:
+    """Short-time inharmonic residual excess over the ideal, frame by frame through the note (skipping 80 ms after
+    each onset), reported at the 90th percentile: intermittent granular distortion that averages away elsewhere."""
+    fl, hp = int(frame_s * SR), int(hop_s * SR)
+    starts = list(range(a, max(a, b - fl), hp))
+    if len(starts) < 3:
+        return None
+    energies = [float(np.sum(ideal[i:i + fl] ** 2)) for i in starts]
+    emax = max(energies)
+    vals = []
+    for i, e in zip(starts, energies):
+        if e < emax * 1e-3:
+            continue
+        t0, t1 = i / SR, (i + fl) / SR
+        if any(o - 0.01 <= t1 and t0 <= o + 0.08 for o in sig.onsets):
+            continue
+        partials = sig.expected_partials(semis, t0, t1)
+        if not partials:
+            continue
+        s, n, _ = partial_energy_split(ya[i:i + fl], partials, pad=1 << 15)
+        si, ni, _ = partial_energy_split(ideal[i:i + fl], partials, pad=1 << 15)
+        vals.append(float(db(max(n / (s + EPS) - ni / (si + EPS), 1e-10))))
+    return float(np.percentile(vals, 90)) if len(vals) >= 3 else None
 
 
 # ---------------------------------------------------------------------------- main entry
@@ -448,6 +492,14 @@ def measure(sig: Signal, semis: float, y: np.ndarray, reported_latency: int | No
             m["env_mod_db"] = envelope_modulation(seg_m, iseg_m)
             if sig.steady:
                 m.update(partial_modulation(seg_m, iseg_m, sig.expected_partials(semis, *sig.steady)))
+        # whole note: attack settle and decay are where the tracker locks/unlocks and grain lengths jump
+        a, b = note_span(ideal, sig.onsets)
+        if b - a > int(0.3 * SR):
+            m["env_mod_note_db"] = envelope_modulation(ya[a:b], ideal[a:b])
+            m["env_mod_hi_db"] = envelope_modulation(ya[a:b], ideal[a:b], nfft=128, hop=24, lo_hz=500.0,
+                                                     mod_lo=64.0, mod_hi=300.0, weight_pow=0.3)
+            if kind in MONO_KINDS | POLY_KINDS:
+                m["grain_noise_p90_db"] = grain_noise_p90(ya, ideal, sig, semis, a, b)
 
     if sig.steady and kind in MONO_KINDS | POLY_KINDS:
         t0, t1 = sig.steady

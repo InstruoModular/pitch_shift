@@ -165,6 +165,23 @@
   fm_rough 3.08 c, am_rough 0.47 dB, env_mod 0.49 dB, lat 8.30 / max 43.9 ms, pitch 1.69 c, if_dev 4.80,
   sinad 35.9, poly 23.6, poly pitch 11.7, flam 1.57, smear 0.78.
 - analysis/remeasure.py re-scores any --keep-wav run with the current metrics (no re-processing).
+- M3 CHECK (real suite, remeasured): the 3-70 Hz metrics did NOT reproduce the verdict (shift 3.26 c / 0.31 dB /
+  0.38 dB vs Arch 3.08 / 0.47 / 0.49; only chords at +7/+12 FM were clearly worse). Added whole-note metrics:
+  env_mod_hi_db (64-300 Hz band-envelope modulation, 0.5 ms resolution, compressive band weighting) DOES:
+  Arch 0.41 vs shift 0.60 (E7 0.59); single guitar notes 0.29 vs 0.57; -1 st 0.19 vs 0.47; -12 0.41 vs 0.74.
+  => the audible artefact is FAST roughness ("granular buzz"), present in E7 too (not caused by the latency
+  tuning), worst where splices are RARE (-1 st), so not simply splice rate. shift is cleaner on residual noise
+  (grain_noise_p90 -52.7 vs Arch -38.0 dB) and slow modulation (env_mod_note 0.34 vs 0.41).
+  Primary smoothness target from here: env_mod_hi_db (must also keep sinad/latency sane).
+- M3b DIAGNOSIS (scratchpad diag_buzz.py, kept WAVs): the buzz concentrates on LOW NOTES SHIFTED DOWN.
+  gtr_E2 -12: shift excess 64-300 Hz roughness 630 Hz 2.14, 1 k 1.91, 1.26 k 1.76, 1.6 k 1.51, 2 k 1.22, 2.5 k 1.05,
+  3.2 k 0.64 dB vs Archetype <= 0.26 dB in every band. gtr_G3 -1: similar to Arch; gtr_E4 +7: shift LOWER.
+  Hypothesis: grain = 1 period (E2: 582 smp), splices every ~24 ms at -12 with ~3 ms crossfades, amplitude-
+  complementary law; stretched upper partials aren't phase-aligned by a period-synchronous splice, so they fade
+  as UNCORRELATED signals and dip up to 3 dB mid-fade -> 41 Hz train of mid/high-band dips = granular buzz.
+  Harmonic synthetic tones never showed it (perfect alignment of every partial). Testing: E17 xfade_min sweep;
+  smooth now also has xfade_law (0 amplitude / 1 correlation-adaptive power using the splice NCC rho / 2 equal
+  power) -- source only until E17 finishes.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,

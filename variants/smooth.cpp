@@ -520,6 +520,19 @@ float Shift_smooth::_splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) co
         }
     }
 
+    /* smooth: fully normalised correlation at the chosen alignment, for the crossfade law. Real guitar partials
+     * are stretched, so a period-aligned splice keeps the low partials in phase but not the upper ones; the
+     * broadband figure tells the fade how much of the signal will actually add coherently. */
+    {
+        float ref_e = 1.0e-12f;
+        for(int32_t n = 0; n < w; n++)
+        {
+            const float a = history[(rbase + static_cast<uint32_t>(n)) & history_mask];
+            ref_e += a * a;
+        }
+        splice_rho = tairm::clamp(best_f / std::sqrt(ref_e), 0.f, 1.f);
+    }
+
     float out = static_cast<float>(d0 + best_i - reach);
     if(best_i > 0 && best_i < (2 * reach))
     {
@@ -563,6 +576,8 @@ void Shift_smooth::_start_fade(float target_lag, float length, bool match_level)
 
     Head& next = head[active ^ 1u];
     _seek(next, tairm::clamp(target_lag, lag_floor, ceiling));
+
+    if(!match_level) splice_rho = 0.f;   // smooth: onset re-seats and range recovery are not aligned: treat as uncorrelated
 
     /* E6: the heads are period-aligned, so a short window compares like with like. Match the incoming
      * head's level to the outgoing one so a decaying note doesn't step at every splice; the gain then
@@ -743,7 +758,22 @@ void Shift_smooth::process(const MonoDspBuffer& input, MonoDspBuffer& output)
              * amplitude, not constant power. */
             const float t = fade_pos;
             const float g = t * t * (3.f - (2.f * t));
-            out = ((1.f - g) * head_gain[active ^ 1u] * _read(outgoing)) + (g * head_gain[active] * _read(head[active]));
+            /* smooth: amplitude-complementary gains only keep constant level for fully correlated heads; for the
+             * uncorrelated part (stretched upper partials) they dip up to 3 dB mid-fade, once per splice = buzz. */
+            float w_out = 1.f - g;
+            float w_in  = g;
+            if(xfade_law == 2)
+            {
+                w_out = std::cos(g * 1.5707964f);
+                w_in  = std::sin(g * 1.5707964f);
+            }
+            else if(xfade_law == 1)
+            {
+                const float nrm = std::sqrt(tairm::max((w_out * w_out) + (w_in * w_in) + (2.f * splice_rho * w_out * w_in), 1.0e-6f));
+                w_out /= nrm;
+                w_in  /= nrm;
+            }
+            out = (w_out * head_gain[active ^ 1u] * _read(outgoing)) + (w_in * head_gain[active] * _read(head[active]));
 
             _advance(outgoing);
             fade_pos += fade_step;
@@ -806,6 +836,7 @@ template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, d
     if(name == "period_slew")          { Shift_smooth::period_slew = v;            return true; }
     if(name == "subsample_refine")     { Shift_smooth::subsample_refine = v > 0.5f; return true; }
     if(name == "xfade_min")            { Shift_smooth::xfade_min = v;              return true; }
+    if(name == "xfade_law")            { Shift_smooth::xfade_law = static_cast<int>(v + 0.5f); return true; }
     if(name == "fine_corr_window")     { Shift_smooth::fine_corr_window = v;       return true; }
     if(name == "xfade_frac")           { Shift_smooth::xfade_frac = v;          return true; }
     return false;

@@ -163,6 +163,23 @@ for key in ("harm", "chord"):
     if key == "harm":
         check(f"AM0.5dB@20Hz {key} am_rough_db", m.get("am_rough_db"), 0.28, 0.42)
 
+# granular buzz: +-0.5 dB AM at 150 Hz must show in the 64-300 Hz band metric (whole note), ideals must not
+for key in ("harm", "pluck"):
+    m = run(key, 7, SIG[key].render(7))
+    check(f"ideal {key}+7 env_mod_hi_db", m.get("env_mod_hi_db"), 0.0, 0.05)
+    check(f"ideal {key}+7 env_mod_note_db", m.get("env_mod_note_db"), 0.0, 0.05)
+    check(f"ideal {key}+7 grain_noise_p90_db", m.get("grain_noise_p90_db"), -101.0, -60.0)
+    x = SIG[key].render(7).astype(np.float64)
+    t = np.arange(len(x)) / SR
+    m = run(key, 7, x * 10 ** (0.5 * np.sin(2 * np.pi * 150.0 * t) / 20))
+    check(f"AM0.5dB@150Hz {key} env_mod_hi_db", m.get("env_mod_hi_db"), 0.2, 0.45)
+# On a pure sine the 150 Hz AM must stay out of the 3-64 Hz band (on harmonic tones its sidebands beat against
+# neighbouring partials at a few Hz, so slow modulation legitimately rises there).
+x = SIG["sine"].render(7).astype(np.float64)
+t = np.arange(len(x)) / SR
+m = run("sine", 7, x * 10 ** (0.5 * np.sin(2 * np.pi * 150.0 * t) / 20))
+check("AM0.5dB@150Hz sine env_mod_db (3-64 Hz, must stay low)", m.get("env_mod_db", 0.0), 0.0, 0.1)
+
 # -40 dB white noise must not read as warble
 s = SIG["harm"]
 x = s.render(7).astype(np.float64)

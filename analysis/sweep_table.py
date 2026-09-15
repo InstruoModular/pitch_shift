@@ -16,10 +16,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_suite import aggregate, key_of, load_reference  # noqa: E402
 
-COLS = [("lat_ms", "lat"), ("lat_ms_max", "latmax"), ("pitch_err_cents", "pitch"), ("if_dev_cents", "ifdev"),
+COLS = [("lat_ms", "lat"), ("lat_ms_max", "latmax"), ("pitch_err_cents", "pitch"),
+        ("env_mod_hi_db", "buzz"), ("env_mod_note_db", "envmod"), ("fm_rough_cents", "fmrough"),
+        ("am_rough_db", "amrough"), ("grain_noise_p90_db", "gnoise"),
         ("sinad_db", "sinad"), ("sinad_poly_db", "poly"), ("poly_pitch_err_cents", "ppitch"),
-        ("flam_db", "flam"), ("attack_smear", "smear"), ("lsd_db", "lsd"), ("am_pp_db", "am"),
-        ("cpu_worst_block_pct", "cpu%")]
+        ("flam_db", "flam"), ("attack_smear", "smear"), ("lsd_db", "lsd"), ("cpu_worst_block_pct", "cpu%")]
 
 
 def main() -> None:

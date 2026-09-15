@@ -23,7 +23,11 @@ warble").** The metric suite missed modulation artefacts. Stages:
     fine window, full normalisation), crossfade/grain length vs latency rebalanced on the new metrics;
  M5 re-fold, rebuild Shift Listen (shift_capi + ShiftListen_SyncDll + tools/smoke_plugin.py), update docs/RESULTS.md,
     ask the user to re-listen.
-**Resume here:** M1.
+**Progress:** M1 done (fm/am rough, env_mod) + M2 done (suites/real.json). M3: 3-70 Hz metrics did not match the
+ears; env_mod_hi_db (64-300 Hz, whole note) does (Arch 0.41 vs shift 0.60). Selftest for it added.
+**Resume here:** M3b diagnose the buzz (scratchpad diag_buzz.py: per-band + event spacing), then M4 on
+`variants/smooth` (built from lat_causal; knobs period_median3/jump/alpha/slew, subsample_refine, fine_corr_window,
+xfade_min) targeting env_mod_hi_db on suites/real.json vs Archetype (results kept-WAV runs; remeasure.py).
 
 **STATUS 2026-09-15 (latency + chord-pitch work DONE — superseded by the listening verdict above):** shift.hpp/cpp = folded final winner
 (exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24;xfade_frac=0.125;blind_span_cap=538),
