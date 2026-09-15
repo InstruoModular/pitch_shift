@@ -185,6 +185,15 @@
 - E17: crossfade LENGTH does not change the buzz (xfade_min 32/256/768 -> 0.60/0.61/0.62 dB) and costs latency/
   flams. Consistent with the gain-law hypothesis (an uncorrelated component dips to -3 dB mid-fade regardless of
   fade length). E18 tests the law itself.
+- E18: the fade LAW isn't it either: correlation-adaptive power == amplitude law (rho ~1 at splices), equal power
+  is far worse (buzz 0.86, sinad 26 dB). So the splice crossfades carry mostly correlated content and are not the
+  buzz source. Next suspect: false onset re-seats during sustain (unaligned 64-sample fades), since buzz persists
+  at -1 st where splices are ~90 ms apart. Instrumenting events (E19) before guessing further.
+- E19 event log (variant smooth, SHIFT_EVENTS=<file>): no onset re-seats or range recoveries happen inside notes,
+  so that's not it either. The buzz is concentrated on LOW notes (E2 -12 2.0 dB, A2 +5 1.05) and near zero on G3 -1 /
+  E4 +7, and the low-note splice rates don't fit whole-period grains (E2 -12 ~68 splices/s vs 41 expected; A2 +5 grain
+  ~0.7 period). Lead: YIN mis-tracks realistic low notes (stretched partials + pluck/pickup combs), so splice distances
+  aren't period multiples -> phase jumps in the fundamental every splice. Checking per-splice period vs truth.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
