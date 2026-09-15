@@ -90,6 +90,19 @@
   -0.576 at -2/+10, -0.357 at -3/+9, -0.208 at -4/+8, -0.112 at -5/+7, exact at 0/+-12. It explains E7's
   systematic -0.88 c at -1 st on every note. Ratio only changes with the interval -> use an exact value.
 
+## Latency work vs Archetype (variant `lat`, runtime knobs via set_param; greedy sweeps on the full suite)
+- `analysis/sweep_table.py <run> [--shifts]` prints settings x (lat, latmax, pitch, ifdev, sinad, poly, ppitch,
+  flam, smear, lsd, am, cpu%) plus the Archetype row, and median lat per shift. Use it after every sweep.
+- E10 exact ratio: pitch 0.20->0.07 c, if_dev 0.30->0.17 c, free.
+- E11 onset_runway is THE upshift latency term (head re-seated runway*(r-1) behind the input at attacks):
+  1200->300 took median lat 11.7->8.3 ms (= Arch 8.2) and +12 16.1->6.9 ms, costing flam 1.14->1.75 (Arch 2.46)
+  and smear 0.93->0.99 (Arch 0.88). runway 0 is worse (flam 2.29, smear 1.26) with no median gain.
+- Downshift latency is a different mechanism (E11 left it unchanged: -12 15.8 vs Arch 5.8): the head sits at
+  the blind lag_floor (40 + fallback_corr_window/2) and then falls behind at (1-r) until it splices back by the
+  onset grain -> E12 sweeps both.
+- CPU worst-block numbers in multi-setting sweeps swing 30-110 % with no code change (OS noise); re-time the
+  final candidate with the 3x re-time recipe before trusting CPU.
+
 ## Probe tooling
 - analysis/probe.py validated on known answers (scratchpad validate_probe.py): 10 ms delay -> click first
   arrival 9.8 ms, burst lat50 9.9-10.3 ms; ideal -> formant verdict 'naive' (corr 1.0). Sideband probe v1
