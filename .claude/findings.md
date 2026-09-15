@@ -64,6 +64,31 @@
   disc 0.07 vs 1.06, poly pitch 8.38 vs 8.06 (within tol), attack smear 0.93 vs 0.88 (within tol).
   E7 LOSES only LATENCY: median 11.7 vs 8.2 ms, max 61.0 vs 45.2 ms. CPU worst block 44 % at block 32.
   -> The job vs the real target is latency (and keep quality), not chords.
+- Latency gap by shift (median onset lat, Arch vs E7): -12 5.8 vs 15.8; -7 8.4 vs 11.8; -5 4.8 vs 10.5;
+  -1 9.2 vs 8.4 (E7 faster); +1 9.0 vs 7.1 (E7 faster); +5 9.4 vs 11.8; +7 4.5 vs 13.7; +12 10.2 vs 16.1.
+  By kind E7 is ~3-4 ms slower almost everywhere except chord (6.4 vs 7.2) and staccato (6.9 vs 6.8).
+  E7 worst case is chords (Emaj -12 61 ms, Cmaj7 +5 46.5 ms: blind path).
+
+## Technique probes (suites/probe.json + analysis/probe.py; Archetype run results/vst-Archetype*/20260915-151104-probe-probe, E7 results/shift-env_match2/20260915-151147-probe-probe)
+- ARCHETYPE = TIME-DOMAIN, PITCH-ADAPTIVE SPLICER (same family as shift.hpp), inferred from:
+  - click response: one clean copy, zero energy before the peak (no FFT framing), first arrival varies
+    2.3-13 ms between clicks and shifts (time-varying delay line); +12 shows a 2nd copy 6.7 ms later.
+  - attack latency (burst lat50): A3 5.8-8.8 ms, E5 4.1-9.4 (one outlier 18.8 at -12), E2 8.5-16 ms ->
+    grows for low notes = delay tied to the pitch period (PSOLA / period-snapped grains).
+  - steady sines: no measurable AM (<0.02 dB) but sidebands -46..-80 dB at 9-66 Hz offsets (smooth splices
+    that aren't perfectly period-aligned); carrier error up to 2.2 c on E2 -12 (low downshifts).
+  - formants NOT preserved (partial amplitudes travel with the partials, corr 1.00 naive).
+  - reports 84 smp latency that excludes the shifter; mutes for seconds after section/param changes.
+  - Intel IPP linked (likely for amp NN/cab IR stages, not needed by a time-domain shifter).
+- E7 by the same probes: click = one copy, 7-17 ms first arrival (Arch 2.3-13); attack latency is the SAME
+  for every note at a given shift (±1: 7.2 ms, ±7: 12-14, ±12: 16-17 ms) -> fixed structural lag, not the
+  period; no sidebands above -80 dB and no AM (cleaner than Arch); formants naive (same as Arch).
+- E7 latency is set by the untracked path every attack goes through before YIN locks (YIN at block 32 retires
+  2 lags/block -> one pitch estimate per ~150 blocks ~100 ms): blind grain 768 (onset_grain), fallback
+  corr window 512 (lag_floor = 40 + 256), plus xfade headroom on upshifts and down_margin on downshifts.
+- BUG (verified numerically): tairm::fast_exp2 is NOT 0.002 % accurate: error -0.884 c at -1/+11 st,
+  -0.576 at -2/+10, -0.357 at -3/+9, -0.208 at -4/+8, -0.112 at -5/+7, exact at 0/+-12. It explains E7's
+  systematic -0.88 c at -1 st on every note. Ratio only changes with the interval -> use an exact value.
 
 ## Probe tooling
 - analysis/probe.py validated on known answers (scratchpad validate_probe.py): 10 ms delay -> click first

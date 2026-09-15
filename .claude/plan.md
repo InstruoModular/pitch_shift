@@ -11,8 +11,14 @@ it is STRUCTURAL for a single time-domain splicer.
 **NOW (2026-09-15):** target plugin = `Archetype Misha Mansoor X.dll` (Neural DSP, VST2, hosted by
 tools/vst2host), shift param `Transpose`, isolation params in findings.md. DONE: warm-up priming, full
 characterisation, promoted to reference/baseline.json, E7 vs Archetype (E7 wins all quality metrics, loses
-latency 11.7 vs 8.2 ms median, 61 vs 45 max). Doing: technique probes (suites/probe.json + analysis/probe.py)
-on Archetype and E7 -> report -> discuss next steps (latency reduction while keeping quality) with the user.
+latency 11.7 vs 8.2 ms median, 61 vs 45 max). Technique probes done (Archetype = time-domain pitch-adaptive
+splicer, no formant preservation; details + fast_exp2 bug in findings.md).
+**Resume here: WAITING ON USER** to pick the next steps. Proposed, in order of expected payoff:
+(1) exact interval ratio (fast_exp2 bug, free); (2) attack-path latency: smaller onset grain + shorter blind
+correlation window + faster YIN lock; (3) causal (backward-only) correlation windows to remove the corr/2
+lookahead from lag_floor; (4) spend part of E7's quality margin (SINAD +25 dB) on smaller tracked grains /
+lower min_grain; (5) chord worst-case latency (blind path). Measure every step vs reference/baseline.json
+(Archetype) with suites full + probe; keep flam_db/SINAD ahead.
 
 **USER DECISIONS (2026-09-15):** BL-PitchShift was a TEST reference only — the user will supply the ACTUAL
 target VST. Re-run Stage 4 on it (`--plugin <file> --shift-param <name>`, see analyse-vst skill), promote it
