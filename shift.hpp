@@ -1,8 +1,8 @@
 #ifndef SHIFT_HPP
 #define SHIFT_HPP
 
-#include "engine/constant.hpp"
-#include "instrument/functions.hpp"
+#include "constants.hpp"
+#include "functions.hpp"
 #include "idsp/filter.hpp"
 #include "idsp/functions.hpp"
 #include <array>

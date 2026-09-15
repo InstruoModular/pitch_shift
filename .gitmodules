@@ -1,0 +1,6 @@
+[submodule "isl"]
+	path = isl
+	url = https://github.com/InstruoModular/isl.git
+[submodule "JUCE"]
+	path = JUCE
+	url = https://github.com/juce-framework/JUCE.git

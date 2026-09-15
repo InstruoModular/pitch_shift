@@ -1,0 +1,6 @@
+build/
+results/**/*.wav
+results/**/plots/
+__pycache__/
+*.pyc
+.vs/

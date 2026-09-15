@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake:*)",
+      "Bash(ninja:*)",
+      "Bash(python analysis/:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "PowerShell(cmake:*)",
+      "PowerShell(ninja:*)",
+      "PowerShell(python analysis/:*)",
+      "PowerShell(python .\\analysis\\:*)",
+      "PowerShell(git status:*)",
+      "PowerShell(git diff:*)",
+      "PowerShell(git log:*)"
+    ]
+  }
+}
