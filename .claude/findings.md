@@ -236,6 +236,27 @@
   attack is excluded from every modulation metric, yet that is where onset re-seat, onset_runway 150, onset_grain 768
   and 64-smp unaligned fades act on every pick (all shortened by the latency tuning) -- relevant to riffs/strumming.
 
+## REAL AUDIO (2026-09-16) -- the listening material, and the first metrics that agree with the ears
+- The user's A/B used `660_simondsouza_calling_out_8_beat_Dm_90.wav` (sax loop, 44.1 kHz mono 5.3 s), Archetype set to
+  Transpose only. Worst on chords/strumming, riffs/picking, complex audio; worse with bigger shifts.
+- analysis/real_audio.py (reference-free: outputs vs the INPUT's own behaviour; renders kept in build/real_audio/<stem>/):
+  shift:current vs Archetype on the sax (fm_rough_c = partial FM rms excess 3-70 Hz along k*r*f0(t); am_rough_db;
+  harm_drop_p90 = short-time harmonic/residual ratio loss vs input):
+    -12: fm 23.60 vs 5.84 c | am 0.96 vs 0.26 dB | harm_drop 12.3 vs 9.2 dB
+     -7: fm 23.13 vs 3.50   | am 0.95 vs 0.13    | 11.4 vs 5.4
+     +7: fm  7.82 vs 0.46   | am 0.83 vs 0.04    |  7.7 vs 1.6
+    +12: fm 11.20 vs 0.24   | am 1.99 vs 0.01    |  9.7 vs 1.2
+  latency similar (shift 3-4 ms, Arch 4-6 ms). mod_lines_db does not discriminate (drop it).
+  => Real material reproduces "audibly worse" by 4-47x on FM roughness. OPTIMISE AGAINST real_audio.py on real
+  material from here; keep the synthetic suites only as regression guards.
+- MECHANISM on the sax (scratchpad sax_events.py, variant smooth = folded winner + SHIFT_EVENTS):
+  splices -12 186/s, -7 125/s, +7 185/s, +12 374/s; grain median ~246 smp (sax f0 ~446 Hz, period ~107 ->
+  min_grain 192 forces 2-period grains); tracked splice correlation rho median only 0.56-0.68 (breath noise, vibrato,
+  ambience), untracked just 7-8 % (rho ~0-0.15), 8-12 onset re-seats. => HUNDREDS of mediocre splices per second =
+  the granular warble. Synthetic tones hid it (rho ~1, few partials per period mismatch). Archetype's ~12 Hz AM
+  suggests grains of tens of ms. Long grains needn't cost attack latency (onsets re-seat to the minimum lag); they
+  add ~grain/2 of sustained delay. Next: min_grain x xfade_frac sweep on the sax (R1).
+
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
   idsp::SVFilter::set_parameters wrapping std::tan) persists even with /std:c++latest; plus __builtin_memcpy.
