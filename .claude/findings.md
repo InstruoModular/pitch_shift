@@ -117,6 +117,12 @@
   0.25 -> 0.0625 took median lat 4.54 -> 3.34 ms and +7 7.5 -> 3.6 ms (Arch 4.5); now faster than Archetype at
   EVERY shift. Cost is small: LSD 1.87 -> 2.10, flam 1.69 -> 1.89, ppitch 8.90 -> 9.11 (Arch 8.06). 0.125 is
   the no-compromise point (lat 4.17, passes every metric vs Arch).
+- E15b: onset_runway 300 -> 150 buys ~0.3-0.5 ms but costs flams (xfade 0.125: 1.82 -> 2.07; 0.0625: 1.89 -> 2.62,
+  past Arch 2.46). WINNER (passes every metric vs Archetype, faster at every shift):
+  exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24;xfade_frac=0.125
+  -> lat 3.66 / max 46.3 ms (Arch 8.16 / 45.2), sinad 68.1, poly 32.8, ppitch 8.67, flam 2.07, smear 0.97, lsd 2.02.
+  CPU (tools/retime.py, min of 3, 12 heaviest jobs, block 32): worst block p50 21.9 %, max 22.1 % -- same as E7
+  (21.5 / 23.1 %), so the latency changes cost no measurable CPU on the desktop.
 - A 2-knob x 4-setting (8-setting) full sweep got killed for memory at setting 7; keep full sweeps to <= 4
   settings per run (checkpoint saves finished settings in metrics.partial.json; sweep_table reads it).
 - CPU worst-block numbers in multi-setting sweeps swing 30-110 % with no code change (OS noise); re-time the

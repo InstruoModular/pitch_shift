@@ -128,27 +128,35 @@ class Shift
         static constexpr size_t yin_min_lag  = 8;
         static constexpr size_t yin_max_lag  = 300;
         static constexpr size_t yin_analysis = yin_window + yin_max_lag;
-        static constexpr size_t yin_per_block = 2;      // lags retired per block
+        static constexpr size_t yin_per_block = 2;   /* lat: runtime-tunable */      // lags retired per block
         static constexpr float  yin_threshold = 0.30f;  // d'(tau) below this is a pitch
         static constexpr uint32_t yin_hold_frames = 6;  // bad frames tolerated
 
-        static constexpr float min_period = 60.f;
+        static constexpr float min_period = 32.f;   // E1: was 60, below which YIN (32 smp) still tracks
         static constexpr float max_period = static_cast<float>(yin_max_lag * 4);
 
         /* The similarity window is centred on the head, so half of it is also
          * the latency floor -- every sample of reach past the head is a sample
          * the output has to wait for. 256 is the shortest that still spans a
          * useful stretch of waveform at the bottom of the range. */
-        static constexpr float max_corr_window = 256.f;
+        static constexpr float max_corr_window = 256.0f;   /* lat: runtime-tunable */
 
         /* The un-tracked path instead needs a window longer than a period of
          * the lowest thing it might see, and a grain long enough that a search
          * around it can reach the common period of a chord. */
-        static constexpr float fallback_corr_window = 512.f;
+        static constexpr float fallback_corr_window = 256.0f;   /* E8: runtime-tunable */
 
-        static constexpr float guard_samples = 40.f;    // kernel reach + slack
-        static constexpr float min_grain     = 192.f;   // floor on splice spacing
-        static constexpr float default_grain = 768.f;   // when no pitch is found
+        static constexpr float guard_samples = 24.0f;   /* lat: runtime-tunable (sinc reach needs >= 17) */
+        static constexpr float onset_runway = 150.0f;   /* lat: was a cpp constant */
+        static constexpr float tracked_corr_min = 128.0f;   /* lat: floor of the tracked correlation window */
+        static constexpr bool  exact_ratio = true;
+        static constexpr float xfade_frac = 0.125f;    /* E15: crossfade = xfade_frac * grain / drift; also sets upshift headroom */
+        static constexpr bool  causal_corr = true;   /* E13: correlation windows end at the head: no look-ahead in lag_floor */   /* lat: std::pow instead of fast_exp2 (up to -0.88 c error) */    // kernel reach + slack
+        static constexpr float min_grain     = 192.0f;   /* lat: runtime-tunable */
+        static constexpr float    blind_span_cap = 269.0f;   /* E8: runtime-tunable (E4b cap) */   // floor on splice spacing
+        static constexpr float default_grain = 1536.0f;   /* E8: runtime-tunable */ /* E3b: was 768 */   // when no pitch is found
+        static constexpr float    onset_grain      = 768.0f;   /* lat: runtime-tunable */   // E5: blind grain for the first 200 ms after an onset
+        static constexpr uint32_t onset_grain_hold = 9600u;
 
         /* Full-rate refinement half-width; must cover half the coarse grid step,
          * which is 4 input samples when tracking and 32 when searching blind. */
@@ -179,7 +187,7 @@ class Shift
         void  _yin_finalise();
         int32_t _splice_coarse(uint32_t ref, int32_t sign);
         float   _splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) const;
-        void    _start_fade(float target_lag, float length);
+        void    _start_fade(float target_lag, float length, bool match_level = false);
 
         /* ratio is at most 2, so the carry never runs more than twice. */
         inline void _advance(Head& h) const
@@ -201,6 +209,9 @@ class Shift
 
         // ---- read heads --------------------------------------------------
         std::array<Head, 2> head{};
+        std::array<float, 2> head_gain{1.f, 1.f};          // E6: per-head level match
+        static constexpr float   gain_relax  = 1.f / 2400.f; // E6: ~50 ms back to unity
+        static constexpr int32_t gain_window = 128;
         size_t   active{0};             // head that survives the current fade
         bool     fading{false};
         float    fade_pos{0.f};
@@ -256,6 +267,7 @@ class Shift
         uint32_t onset_frame{0};
         uint32_t onset_frame_len{512};
         uint32_t onset_hold{0};
+        uint32_t onset_age{onset_grain_hold};   // E5: samples since the last onset
 
         // ---- filters -----------------------------------------------------
         idsp::BiquadFilter<idsp::BiquadType::Highpass>              dc_block;

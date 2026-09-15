@@ -1,4 +1,5 @@
 #include "instrument/shift.hpp"
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -22,7 +23,7 @@ namespace
     static constexpr float onset_floor     = 1.0e-4f;
     static constexpr uint32_t onset_refractory = 1440u;  // 30 ms
     static constexpr float onset_fade      = 64.f;       // output samples
-    static constexpr float onset_runway    = 1200.f;     // 25 ms of splice-free attack
+    // onset_runway moved into the class (runtime-tunable)
 
     /* 8th-order Butterworth, as four biquads. Pole Qs are 1/(2 cos(theta)) for
      * theta = 11.25, 33.75, 56.25, 78.75 degrees. The cutoff sits well below
@@ -53,6 +54,7 @@ void Shift::reset()
     dec_phase = 0u;
 
     active       = 0u;
+    head_gain.fill(1.f);
     fading       = false;
     fade_pos     = 0.f;
     fade_step    = 0.f;
@@ -76,6 +78,7 @@ void Shift::reset()
     onset_frame     = 0u;
     onset_frame_len = 512u;
     onset_hold      = 0u;
+    onset_age       = onset_grain_hold;
 
     dc_block.set_parameters(dc_cutoff_hz * norm_sample_rate, 0.707f);
     dc_block.reset();
@@ -153,7 +156,8 @@ void Shift::_update_interval()
     if(semis == interval) return;
 
     interval = semis;
-    ratio    = tairm::fast_exp2(static_cast<float>(semis) * (1.f / 12.f));
+    ratio    = exact_ratio ? std::pow(2.f, static_cast<float>(semis) / 12.f)   // lat: exact; fast_exp2 is up to 0.88 c flat
+                         : tairm::fast_exp2(static_cast<float>(semis) * (1.f / 12.f));
 
     /* A new interval can reverse which way the head travels, and a distance
      * searched for the old direction is meaningless in the new one. */
@@ -180,7 +184,7 @@ void Shift::_update_interval()
 
 void Shift::_update_grain()
 {
-    const float p = period_valid ? tairm::clamp(period, min_period, max_period) : default_grain;
+    const float p = period_valid ? tairm::clamp(period, min_period, max_period) : ((onset_age < onset_grain_hold) ? onset_grain : default_grain);   // E5
 
     /* The splice distance is a whole number of pitch periods. That is the whole
      * trick: two heads a period apart are in phase, so the crossfade between
@@ -195,7 +199,7 @@ void Shift::_update_grain()
      * be smooth and short enough that the fade is always finished before the
      * next splice comes due. */
     const float drift = tairm::max(std::fabs(1.f - ratio), 1.0e-4f);
-    xfade = tairm::clamp(0.25f * grain / drift, 32.f, 1024.f);
+    xfade = tairm::clamp(xfade_frac * grain / drift, 32.f, 1024.f);   // E15: was 0.25
 
     /* Two very different jobs share this window. When the period is known the
      * splice distance is already predicted and the correlation only has to
@@ -206,7 +210,7 @@ void Shift::_update_grain()
      * period of the lowest content or it is matching noise. Paying for that in
      * latency only on material that actually needs it is the whole point of
      * having the tracker decide. */
-    corr_window = period_valid ? tairm::clamp(p, 128.f, max_corr_window)
+    corr_window = period_valid ? tairm::clamp(p, tracked_corr_min, max_corr_window)
                                : fallback_corr_window;
 
     /* The onset frame must never be shorter than a period, or a frame can land
@@ -220,9 +224,17 @@ void Shift::_update_grain()
      * search is centred on the head, so it reaches half a window past it into
      * samples that have to be written already; and on an upshift the outgoing
      * head keeps falling for the whole crossfade after the splice has moved on. */
-    lag_floor = guard_samples + (0.5f * corr_window);
+    lag_floor = guard_samples + (causal_corr ? 0.f : 0.5f * corr_window);   // E13: causal windows need no look-ahead
     lag_lo    = tairm::max(lag_floor,
                            guard_samples + (xfade * tairm::max(ratio - 1.f, 0.f)));
+    /* E2: a downshift splice lands at lag - d, and the search can return d longer than grain by its
+     * whole reach. With lag_lo sitting on lag_floor that target gets clamped to the floor, the jump
+     * stops being a period multiple, and every splice slips phase flat. Give it the reach as headroom. */
+    if(ratio < 1.f)
+    {
+        lag_lo += (period_valid ? tairm::max(p * 0.125f, 12.f) : tairm::min(0.35f * grain, 64.f))
+                + static_cast<float>(max_fine_reach);
+    }
     lag_hi    = lag_lo + grain;
 
     const float ceiling = static_cast<float>(history_size)
@@ -360,7 +372,7 @@ int32_t Shift::_splice_coarse(uint32_t ref, int32_t sign)
      * side of one grain, at full decimated resolution. Blind, it degenerates to
      * a plain WSOLA similarity search -- a third of a grain either side, wide
      * enough to reach the common period of a chord. */
-    const float   span = period_valid ? tairm::max(period * 0.125f, 12.f) : (0.35f * grain);
+    const float   span = period_valid ? tairm::max(period * 0.125f, 12.f) : tairm::min(0.35f * grain, blind_span_cap);   /* E4b: cap blind reach at the original 0.35*768 */
     /* Blind, the span is nearly seven times wider than the tracked one, so the
      * grid is stepped out to match rather than paying for the extra reach
      * candidate by candidate. Eight decimated samples is 32 input samples, and
@@ -388,8 +400,8 @@ int32_t Shift::_splice_coarse(uint32_t ref, int32_t sign)
      * place. Slide the window back rather than let it read what is not there
      * yet; the look-ahead is worth having but it is not worth inventing. */
     const uint32_t head_d = ref / static_cast<uint32_t>(dec_factor);
-    uint32_t rd = head_d - static_cast<uint32_t>(wd / 2);
-    if(static_cast<int32_t>(head_d + static_cast<uint32_t>(wd / 2) - dec_abs) > 0)
+    uint32_t rd = head_d - static_cast<uint32_t>(causal_corr ? wd : wd / 2);   // E13
+    if(!causal_corr && static_cast<int32_t>(head_d + static_cast<uint32_t>(wd / 2) - dec_abs) > 0)   // E13: a causal window never reaches past the head
     {
         rd = dec_abs - static_cast<uint32_t>(wd);
     }
@@ -453,7 +465,7 @@ float Shift::_splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) const
      * the blind coarse search does. */
     const int32_t w    = static_cast<int32_t>(tairm::min(corr_window, fine_corr_window));
     const int32_t d0   = best_dd * static_cast<int32_t>(dec_factor);
-    const uint32_t rbase = ref - static_cast<uint32_t>(w / 2);
+    const uint32_t rbase = ref - static_cast<uint32_t>(causal_corr ? w : w / 2);   // E13
 
     /* Every offset, not a strided sweep. The peak being resolved here is only
      * as wide as the signal's top octave leaves it -- a few samples on
@@ -499,7 +511,7 @@ float Shift::_splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) const
     return tairm::max(out, 32.f);
 }
 
-void Shift::_start_fade(float target_lag, float length)
+void Shift::_start_fade(float target_lag, float length, bool match_level)
 {
     /* Anything already fading is abandoned rather than queued. The only two
      * callers are a splice (which cannot fire mid-fade) and an onset (which is
@@ -513,6 +525,35 @@ void Shift::_start_fade(float target_lag, float length)
 
     Head& next = head[active ^ 1u];
     _seek(next, tairm::clamp(target_lag, lag_floor, ceiling));
+
+    /* E6: the heads are period-aligned, so a short window compares like with like. Match the incoming
+     * head's level to the outgoing one so a decaying note doesn't step at every splice; the gain then
+     * relaxes to unity slowly enough to be an inaudible glide. Onsets keep their level (no match). */
+    /* E7: whole periods (>= 256 smp), looking back from each head so only written samples are read; only
+     * when tracked, since a chord has no period to make the two windows comparable. */
+    const int32_t w = period_valid
+                    ? static_cast<int32_t>(tairm::clamp(std::ceil(256.f / period) * period, 128.f, 1024.f))
+                    : 0;
+    if(match_level && period_valid)
+    {
+        auto energy = [this, w](const Head& h)
+        {
+            float e = 1.0e-9f;
+            for(int32_t j = -w; j < 0; j++)
+            {
+                const float v = history[(h.pos + static_cast<uint32_t>(j)) & history_mask];
+                e += v * v;
+            }
+            return e;
+        };
+        float gm = std::sqrt(energy(head[active]) / energy(next));
+        if(std::fabs(gm - 1.f) < 0.002f) gm = 1.f;   // E7: deadband, a steady tone gets no gain step at all
+        head_gain[active ^ 1u] = head_gain[active] * tairm::clamp(gm, 0.7f, 1.4f);
+    }
+    else
+    {
+        head_gain[active ^ 1u] = head_gain[active];
+    }
     active   ^= 1u;
     fading    = true;
     fade_pos  = 0.f;
@@ -568,7 +609,7 @@ void Shift::process(const MonoDspBuffer& input, MonoDspBuffer& output)
         else if(onset_fast > ((onset_ratio * onset_prev) + onset_floor))
         {
             onset      = true;
-            onset_hold = onset_refractory;
+            onset_hold = onset_refractory; onset_age = 0u;   // E5
         }
 
         onset_cur = tairm::max(onset_cur, onset_fast);
@@ -579,6 +620,7 @@ void Shift::process(const MonoDspBuffer& input, MonoDspBuffer& output)
             onset_frame = onset_frame_len;
         }
         onset_frame--;
+        if(onset_age < onset_grain_hold) onset_age++;   // E5
 
         // ---- head scheduling -----------------------------------------------
         const float lag = static_cast<float>(w_abs - head[active].pos) - head[active].frac;
@@ -616,7 +658,7 @@ void Shift::process(const MonoDspBuffer& input, MonoDspBuffer& output)
             if(due && splice_armed && !searched)
             {
                 const float d = _splice_fine(head[active].pos, sign, splice_dd);
-                _start_fade(lag - (static_cast<float>(sign) * d), xfade);
+                _start_fade(lag - (static_cast<float>(sign) * d), xfade, true);
                 searched = true;
             }
             else if(!splice_armed && !searched)
@@ -663,7 +705,7 @@ void Shift::process(const MonoDspBuffer& input, MonoDspBuffer& output)
              * amplitude, not constant power. */
             const float t = fade_pos;
             const float g = t * t * (3.f - (2.f * t));
-            out = ((1.f - g) * _read(outgoing)) + (g * _read(head[active]));
+            out = ((1.f - g) * head_gain[active ^ 1u] * _read(outgoing)) + (g * head_gain[active] * _read(head[active]));
 
             _advance(outgoing);
             fade_pos += fade_step;
@@ -671,12 +713,15 @@ void Shift::process(const MonoDspBuffer& input, MonoDspBuffer& output)
         }
         else
         {
-            out = _read(head[active]);
+            out = head_gain[active] * _read(head[active]);
         }
         _advance(head[active]);
+        head_gain[active] += (1.f - head_gain[active]) * gain_relax;   // E6
 
         output[i] = out;
     }
 
     if(!searched) _pitch_tick();
 }
+
+
