@@ -76,7 +76,8 @@ def signal_cache(spec: dict) -> Path:
 
 # ---------------------------------------------------------------------------- processing
 
-def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path, block: int | None) -> None:
+def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path, block: int | None,
+                  procs: int | None = None) -> None:
     if target == "vst":
         exe, first = VSTHOST, str(PLUGIN)
         block = block or 32
@@ -91,8 +92,9 @@ def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path,
 
     # VST processing is single-threaded per process: split the manifest across processes.
     # shiftbench stays single-process so CPU timings aren't skewed by contention.
-    # 2 plugin instances max: each loads the plugin's GL-heavy DLL, and this machine has little free RAM.
-    chunks = max(1, min(2, (os.cpu_count() or 2) // 2)) if target == "vst" else 1
+    # 2 plugin instances max by default: each loads the plugin's GL-heavy DLL, and this machine has
+    # little free RAM. --procs 1 for the leanest run.
+    chunks = max(1, procs or min(2, (os.cpu_count() or 2) // 2)) if target == "vst" else 1
     procs = []
     for c in range(chunks):
         part = jobs[c::chunks]
@@ -179,7 +181,9 @@ def scorecard_text(title: str, cand: dict, ref: dict | None, ref_label: str | No
                 row += f"{'-' if r is None else f'{r:10.2f}':>10}{'':>9}  ."
             else:
                 delta = (c - r) * direction          # + means candidate better
-                ok = delta >= -tol
+                floor = metrics.FLOORS.get(name)
+                below_floor = floor is not None and c <= floor and r <= floor
+                ok = delta >= -tol or below_floor
                 fails += not ok
                 row += f"{r:10.2f}{delta:+9.2f}  {'ok' if ok else 'XX'}"
         lines.append(row)
@@ -251,12 +255,16 @@ def cmd_run(a: argparse.Namespace) -> int:
             n_jobs += len(jobs)
 
             t = time.time()
-            run_processor(a.target, jobs, run_dir, a.block)
+            run_processor(a.target, jobs, run_dir, a.block, a.procs)
             t_proc += time.time() - t
 
             t = time.time()
             records += list(ex.map(_measure_job, meas, chunksize=4))
             t_meas += time.time() - t
+            # Checkpoint after every setting: a low-memory kill then loses one setting, not the sweep.
+            (run_dir / "metrics.partial.json").write_text(json.dumps({
+                "target": a.target, "suite": suite["name"], "settings": names[: si + 1], "shifts": shifts,
+                "records": records}, indent=1))
             if len(settings) > 1:
                 print(f"  setting {si + 1}/{len(settings)} [{name}] done", flush=True)
             if not a.keep_wav:
@@ -318,7 +326,8 @@ def main() -> None:
     ap.add_argument("--compare-setting", type=int, help="setting index when --compare is a multi-setting run")
     ap.add_argument("--gate", action="store_true", help="exit 1 if any metric worse than --compare beyond tolerance")
     ap.add_argument("--tag")
-    ap.add_argument("--workers", type=int, help="metric worker processes (default min(6, cpus-1))")
+    ap.add_argument("--workers", type=int, help="metric worker processes (default min(3, cpus-1))")
+    ap.add_argument("--procs", type=int, help="concurrent vsthost instances (default 2)")
     ap.add_argument("--keep-wav", action="store_true")
     ap.add_argument("--no-report", action="store_true")
     ap.add_argument("--info", action="store_true")

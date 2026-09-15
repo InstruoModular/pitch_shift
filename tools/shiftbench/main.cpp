@@ -74,33 +74,40 @@ int main(int argc, char** argv)
         }
         if(!ok) { failures++; continue; }
 
-        shifter->reset();
-        shifter->set_shift(shift);
-
         const size_t total = in.samples.size() + static_cast<size_t>(tail_ms * sample_rate / 1000.0);
+        const size_t blocks = (total + B - 1) / B;
         std::vector<float> out;
-        out.reserve(total + B);
+        out.reserve(blocks * B);
         MonoDspBuffer bin{}, bout{};
-        double ns_sum = 0.0, ns_worst = 0.0;
-        size_t blocks = 0;
 
-        for(size_t pos = 0; pos < total; pos += B)
+        /* Two identical passes, per-block minimum time. The processor is deterministic, so a block that
+         * is slow in both passes is slow because of the algorithm; a block slow in only one was the OS
+         * (preemption, page faults -- common on this RAM-starved desktop). */
+        std::vector<double> block_ns(blocks, 1e300);
+        for(int pass = 0; pass < 2; pass++)
         {
-            for(size_t i = 0; i < B; i++)
+            shifter->reset();
+            shifter->set_shift(shift);
+            for(size_t b = 0; b < blocks; b++)
             {
-                const size_t s = pos + i;
-                bin[i] = s < in.samples.size() ? in.samples[s] : 0.f;
+                const size_t pos = b * B;
+                for(size_t i = 0; i < B; i++)
+                {
+                    const size_t s = pos + i;
+                    bin[i] = s < in.samples.size() ? in.samples[s] : 0.f;
+                }
+                const auto t0 = std::chrono::steady_clock::now();
+                shifter->process(bin, bout);
+                const double ns = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                      std::chrono::steady_clock::now() - t0).count());
+                block_ns[b] = std::min(block_ns[b], ns);
+                if(pass == 0) for(size_t i = 0; i < B; i++) out.push_back(bout[i]);
             }
-            const auto t0 = std::chrono::steady_clock::now();
-            shifter->process(bin, bout);
-            const double ns = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                  std::chrono::steady_clock::now() - t0).count());
-            ns_sum += ns;
-            ns_worst = std::max(ns_worst, ns);
-            blocks++;
-            for(size_t i = 0; i < B; i++) out.push_back(bout[i]);
         }
         out.resize(total);
+
+        double ns_sum = 0.0, ns_worst = 0.0;
+        for(double ns : block_ns) { ns_sum += ns; ns_worst = std::max(ns_worst, ns); }
 
         if(!wav::write(job.out, out, static_cast<uint32_t>(sample_rate)))
         { std::cerr << "cannot write " << job.out << "\n"; failures++; continue; }

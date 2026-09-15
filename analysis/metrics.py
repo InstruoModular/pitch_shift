@@ -46,6 +46,10 @@ SCORECARD: dict[str, tuple[str, int, float, str]] = {
     "cpu_worst_block_pct":("max",    -1, 0.0,  "worst block time / block period (shiftbench)"),
 }
 
+# Inaudible floors: when candidate and reference are both at or beyond the floor, the scorecard counts the
+# metric as ok regardless of the delta (a -91 vs -127 dB subharmonic is not a regression).
+FLOORS: dict[str, float] = {"subharm_db": -60.0, "hf_junk_db": -60.0, "silence_dbfs": -90.0, "disc_db": 1.0}
+
 
 # ---------------------------------------------------------------------------- basics
 
