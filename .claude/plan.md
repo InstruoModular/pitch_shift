@@ -14,9 +14,9 @@ characterisation, promoted to reference/baseline.json, E7 vs Archetype (E7 wins 
 latency 11.7 vs 8.2 ms median, 61 vs 45 max). Technique probes done (Archetype = time-domain pitch-adaptive
 splicer, no formant preservation; details + fast_exp2 bug in findings.md).
 **Resume here (latency work, user said "tackle the next steps, match Archetype latency; sr/block may change"):**
-variant `lat_causal`, best so far = exact_ratio=1;onset_runway=300;fallback_corr_window=256;onset_grain=768;causal_corr=1
-(median 5.08 ms vs Arch 8.16; max 46.4 vs 45.2; all quality ahead). E14 (yin_per_block x guard x default_grain)
-running/done in results/shift-lat_causal/*-full-E14. Then: upshift attack latency (onset_runway / per-direction),
+variant `lat_causal`, best so far = exact_ratio=1;onset_runway=300;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24
+(median 4.54 ms vs Arch 8.16; max 46.2 vs 45.2 within tol; all quality ahead). E15a (xfade_frac, runway 300)
+running in results/shift-lat_causal/*-full-E15a, then E15b (runway 150). Then: upshift attack latency,
 CPU re-time of the winner, fold winner into shift.hpp/.cpp (constants, exact ratio, causal windows).
 Earlier proposal list (for reference): Proposed, in order of expected payoff:
 (1) exact interval ratio (fast_exp2 bug, free); (2) attack-path latency: smaller onset grain + shorter blind

@@ -151,6 +151,7 @@ class Shift_lat_causal
         static inline float onset_runway = 1200.f;   /* lat: was a cpp constant */
         static inline float tracked_corr_min = 128.f;   /* lat: floor of the tracked correlation window */
         static inline bool  exact_ratio = true;
+        static inline float xfade_frac = 0.25f;    /* E15: crossfade = xfade_frac * grain / drift; also sets upshift headroom */
         static inline bool  causal_corr = false;   /* E13: correlation windows end at the head: no look-ahead in lag_floor */   /* lat: std::pow instead of fast_exp2 (up to -0.88 c error) */    // kernel reach + slack
         static inline float min_grain     = 192.f;   /* lat: runtime-tunable */
         static inline float    blind_span_cap = 269.f;   /* E8: runtime-tunable (E4b cap) */   // floor on splice spacing

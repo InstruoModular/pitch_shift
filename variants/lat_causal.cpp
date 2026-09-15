@@ -200,7 +200,7 @@ void Shift_lat_causal::_update_grain()
      * be smooth and short enough that the fade is always finished before the
      * next splice comes due. */
     const float drift = tairm::max(std::fabs(1.f - ratio), 1.0e-4f);
-    xfade = tairm::clamp(0.25f * grain / drift, 32.f, 1024.f);
+    xfade = tairm::clamp(xfade_frac * grain / drift, 32.f, 1024.f);   // E15: was 0.25
 
     /* Two very different jobs share this window. When the period is known the
      * splice distance is already predicted and the correlation only has to
@@ -740,6 +740,7 @@ template<> bool ShiftAdapter<Shift_lat_causal>::set_param(const std::string& nam
     if(name == "tracked_corr_min")     { Shift_lat_causal::tracked_corr_min = v;     return true; }
     if(name == "exact_ratio")          { Shift_lat_causal::exact_ratio = v > 0.5f;   return true; }
     if(name == "causal_corr")          { Shift_lat_causal::causal_corr = v > 0.5f;   return true; }
+    if(name == "xfade_frac")           { Shift_lat_causal::xfade_frac = v;          return true; }
     return false;
 }
 

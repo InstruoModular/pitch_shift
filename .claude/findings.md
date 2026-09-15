@@ -109,6 +109,12 @@
   -5 3.4 vs 4.8, -1 3.0 vs 9.2) with SINAD/poly/smear unchanged. Side effect: max latency 38-41 -> 46-54 ms
   (chords). Best: causal + w256 + g768: lat 5.08 / max 46.4, ppitch 8.85, flam 1.68. Upshifts are now the
   slower side (+7 7.7 vs Arch 4.5) -- they are set by onset_runway*(r-1).
+- E14: guard_samples 40 -> 24 is free (-0.5 ms everywhere, quality same). Faster YIN (8 lags/block) does NOT
+  help latency (max 46 -> 54 ms). Shorter blind default_grain trades chord pitch/flams for <1 ms of upshift.
+  Best after E14: exact_ratio=1;onset_runway=300;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24
+  -> lat 4.54 / max 46.2 ms (Arch 8.16 / 45.2), sinad 68.1, poly 32.8, ppitch 8.90, flam 1.69, smear 0.91.
+- A 2-knob x 4-setting (8-setting) full sweep got killed for memory at setting 7; keep full sweeps to <= 4
+  settings per run (checkpoint saves finished settings in metrics.partial.json; sweep_table reads it).
 - CPU worst-block numbers in multi-setting sweeps swing 30-110 % with no code change (OS noise); re-time the
   final candidate with the 3x re-time recipe before trusting CPU.
 
