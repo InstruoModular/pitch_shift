@@ -100,6 +100,10 @@
 - Downshift latency is a different mechanism (E11 left it unchanged: -12 15.8 vs Arch 5.8): the head sits at
   the blind lag_floor (40 + fallback_corr_window/2) and then falls behind at (1-r) until it splices back by the
   onset grain -> E12 sweeps both.
+- E12: the blind correlation window is the downshift lever (512->256: -12 15.8->10.5 ms, -1 8.4->5.6), onset_grain
+  mostly moves flams and max latency (768->384: flam 1.57->0.83, max 38->31 ms at w256) not the median. Shorter
+  blind windows cost chord per-note pitch (ppitch 8.4 -> 9.5-9.8 c). First config passing EVERY metric vs Arch:
+  exact_ratio=1, onset_runway=300, fallback_corr_window=384, onset_grain=768 (lat 7.41 / max 40.9 ms).
 - CPU worst-block numbers in multi-setting sweeps swing 30-110 % with no code change (OS noise); re-time the
   final candidate with the 3x re-time recipe before trusting CPU.
 
