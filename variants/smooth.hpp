@@ -159,6 +159,9 @@ class Shift_smooth
         static inline float period_slew = 0.0f;       /* smooth: max relative period change per frame (0 = off) */
         static inline bool  subsample_refine = false; /* smooth: re-evaluate NCC at +-0.25 smp via the sinc read */
         static inline float xfade_min = 32.f;         /* smooth: crossfade floor (output samples) */
+        static inline float corr_preemph = 0.f;       /* smooth: fine-correlation pre-emphasis a (x[n]-a*x[n-1]); weights the
+                                                         upper partials, whose alignment is what buzzes on real strings */
+        static inline int   fine_reach_min = 0;       /* smooth: minimum fine search half-width (<= max_fine_reach) */
         static inline int   xfade_law = 0;            /* smooth: 0 amplitude smoothstep, 1 correlation-adaptive power, 2 equal power */    /* E15: crossfade = xfade_frac * grain / drift; also sets upshift headroom */
         static inline bool  causal_corr = false;   /* E13: correlation windows end at the head: no look-ahead in lag_floor */   /* lat: std::pow instead of fast_exp2 (up to -0.88 c error) */    // kernel reach + slack
         static inline float min_grain     = 192.f;   /* lat: runtime-tunable */

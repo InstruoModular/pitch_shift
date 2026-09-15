@@ -2,6 +2,8 @@
 #include "variant.hpp"   // lat: set_param specialisation below needs ShiftAdapter
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 
 namespace
 {
@@ -20,7 +22,21 @@ namespace
      * and only a genuinely new event clears the threshold. */
     static constexpr float onset_lp_coef   = 0.0999f;    // ~800 Hz crossover
     static constexpr float onset_fast_coef = 0.0408f;    // ~0.5 ms, de-spike only
-    static constexpr float onset_ratio     = 2.5f;
+    float onset_ratio  = 2.5f;    // smooth: runtime-tunable (set_param onset_ratio)
+    bool  onset_reseat = true;    // smooth: runtime-tunable (set_param onset_reseat)
+
+    /* smooth: debug event log, only when SHIFT_EVENTS names a file. Harness-only; never in firmware. */
+    FILE* events_file()
+    {
+        static FILE* f = nullptr;
+        static bool tried = false;
+        if(!tried)
+        {
+            tried = true;
+            if(const char* path = std::getenv("SHIFT_EVENTS")) f = std::fopen(path, "w");
+        }
+        return f;
+    }
     static constexpr float onset_floor     = 1.0e-4f;
     static constexpr uint32_t onset_refractory = 1440u;  // 30 ms
     static constexpr float onset_fade      = 64.f;       // output samples
@@ -477,7 +493,8 @@ float Shift_smooth::_splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) co
      * can only widen or narrow the window the peak is hunted in, never move it
      * off the distance the coarse pass chose. */
     const int32_t step  = period_valid ? 1 : 8;
-    const int32_t reach = idsp::min<int32_t>(idsp::max<int32_t>(2 * step, 4), max_fine_reach);
+    const int32_t reach = idsp::min<int32_t>(idsp::max<int32_t>(idsp::max<int32_t>(2 * step, 4), fine_reach_min),
+                                             max_fine_reach);   // smooth: fine_reach_min
 
     /* Fine pass at full rate, over the half-step the coarse grid could not
      * resolve, and then a parabolic step on the correlation peak that takes the
@@ -507,8 +524,13 @@ float Shift_smooth::_splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) co
         float den = 1.0e-12f;
         for(int32_t n = 0; n < w; n++)
         {
-            const float a = history[(rbase + static_cast<uint32_t>(n)) & history_mask];
-            const float b = history[(cp    + static_cast<uint32_t>(n)) & history_mask];
+            float a = history[(rbase + static_cast<uint32_t>(n)) & history_mask];
+            float b = history[(cp    + static_cast<uint32_t>(n)) & history_mask];
+            if(corr_preemph > 0.f)   // smooth: HF-weighted alignment
+            {
+                a -= corr_preemph * history[(rbase + static_cast<uint32_t>(n) - 1u) & history_mask];
+                b -= corr_preemph * history[(cp    + static_cast<uint32_t>(n) - 1u) & history_mask];
+            }
             num += a * b;
             den += b * b;
         }
@@ -527,7 +549,8 @@ float Shift_smooth::_splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) co
         float ref_e = 1.0e-12f;
         for(int32_t n = 0; n < w; n++)
         {
-            const float a = history[(rbase + static_cast<uint32_t>(n)) & history_mask];
+            float a = history[(rbase + static_cast<uint32_t>(n)) & history_mask];
+            if(corr_preemph > 0.f) a -= corr_preemph * history[(rbase + static_cast<uint32_t>(n) - 1u) & history_mask];
             ref_e += a * a;
         }
         splice_rho = tairm::clamp(best_f / std::sqrt(ref_e), 0.f, 1.f);
@@ -682,9 +705,10 @@ void Shift_smooth::process(const MonoDspBuffer& input, MonoDspBuffer& output)
         {
             /* Only reachable in the block after an interval change, where the
              * bounds move under a head that was legal a moment ago. */
+            if(FILE* ev = events_file()) std::fprintf(ev, "%u R %.1f\n", w_abs - static_cast<uint32_t>(history_size), lag);
             _start_fade((ratio > 1.f) ? lag_hi : lag_lo, onset_fade);
         }
-        else if(onset && shifting)
+        else if(onset && shifting && onset_reseat)
         {
             /* Re-seat so the pick gets splice-free runway across the attack.
              * Without it the attack is the one thing in the signal that gets
@@ -702,7 +726,11 @@ void Shift_smooth::process(const MonoDspBuffer& input, MonoDspBuffer& output)
             const float target = (ratio > 1.f)
                                ? tairm::min(lag_hi, lag_lo + (onset_runway * (ratio - 1.f)))
                                : lag_lo;
-            if(std::fabs(target - lag) > 8.f) _start_fade(target, onset_fade);
+            if(std::fabs(target - lag) > 8.f)
+            {
+                if(FILE* ev = events_file()) std::fprintf(ev, "%u O %.1f\n", w_abs - static_cast<uint32_t>(history_size), lag);
+                _start_fade(target, onset_fade);
+            }
         }
         else if(shifting && !fading)
         {
@@ -711,6 +739,8 @@ void Shift_smooth::process(const MonoDspBuffer& input, MonoDspBuffer& output)
             if(due && splice_armed && !searched)
             {
                 const float d = _splice_fine(head[active].pos, sign, splice_dd);
+                if(FILE* ev = events_file()) std::fprintf(ev, "%u S %.1f %.3f %.2f %.1f %d\n", w_abs - static_cast<uint32_t>(history_size), lag, splice_rho,
+                                          period, grain, period_valid ? 1 : 0);
                 _start_fade(lag - (static_cast<float>(sign) * d), xfade, true);
                 searched = true;
             }
@@ -802,13 +832,20 @@ float Shift_smooth::_ncc_frac(uint32_t rbase, double dist, int32_t sign, int32_t
     const double start = static_cast<double>(sign) * dist;
     for(int32_t n = 0; n < w; n++)
     {
-        const float  a  = history[(rbase + static_cast<uint32_t>(n)) & history_mask];
+        float        a  = history[(rbase + static_cast<uint32_t>(n)) & history_mask];
+        if(corr_preemph > 0.f) a -= corr_preemph * history[(rbase + static_cast<uint32_t>(n) - 1u) & history_mask];
         const double p  = static_cast<double>(n) + start;
         const double fl = std::floor(p);
         Head h;
         h.pos  = rbase + static_cast<uint32_t>(static_cast<int64_t>(fl));
         h.frac = static_cast<float>(p - fl);
-        const float b = _read(h);
+        float b = _read(h);
+        if(corr_preemph > 0.f)
+        {
+            Head hp = h;
+            hp.pos -= 1u;
+            b -= corr_preemph * _read(hp);
+        }
         num += a * b;
         den += b * b;
     }
@@ -836,6 +873,10 @@ template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, d
     if(name == "period_slew")          { Shift_smooth::period_slew = v;            return true; }
     if(name == "subsample_refine")     { Shift_smooth::subsample_refine = v > 0.5f; return true; }
     if(name == "xfade_min")            { Shift_smooth::xfade_min = v;              return true; }
+    if(name == "onset_reseat")         { onset_reseat = v > 0.5f;                  return true; }
+    if(name == "onset_ratio")          { onset_ratio = v;                          return true; }
+    if(name == "corr_preemph")         { Shift_smooth::corr_preemph = v;           return true; }
+    if(name == "fine_reach_min")       { Shift_smooth::fine_reach_min = static_cast<int>(v + 0.5f); return true; }
     if(name == "xfade_law")            { Shift_smooth::xfade_law = static_cast<int>(v + 0.5f); return true; }
     if(name == "fine_corr_window")     { Shift_smooth::fine_corr_window = v;       return true; }
     if(name == "xfade_frac")           { Shift_smooth::xfade_frac = v;          return true; }

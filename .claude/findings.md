@@ -205,6 +205,11 @@
   (E17/E18) did nothing, and why perfectly harmonic synthetic tones never showed it.
 - Lever: the splice offset is chosen by an LF-dominated correlation; LF partials tolerate a few samples (5 smp = 3 deg
   of E2) but HF partials don't -> pre-emphasised (HF-weighted) correlation + wider fine reach (E20).
+- E20: HF-weighted correlation (pre-emphasis 0.95) and fine reach 16 do NOTHING to the buzz (E2 -12 2.00/1.99/2.01).
+  Choosing a different single splice offset can't rescue the upper partials (each wants a different offset).
+  Not yet proven that inharmonicity is the cause -> suites/buzzcheck.json isolates it (inharm=0 / no drift / both)
+  for shift and Archetype. Archetype's low-note attack latency (8.5-16 ms on E2) and ~12 Hz AM hint it splices low
+  notes less often -> min_grain sweep next.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,

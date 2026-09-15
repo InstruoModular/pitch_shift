@@ -1,0 +1,16 @@
+{
+  "name": "buzzcheck",
+  "shifts": [-12, 5],
+  "signals": [
+    {"id": "bz_E2_real",        "kind": "guitar", "note": "E2", "dur": 2.5},
+    {"id": "bz_E2_harmonic",    "kind": "guitar", "note": "E2", "dur": 2.5, "inharm": 0.0},
+    {"id": "bz_E2_nodrift",     "kind": "guitar", "note": "E2", "dur": 2.5, "drift_cents": 0.0, "attack_cents": 0.0},
+    {"id": "bz_E2_clean",       "kind": "guitar", "note": "E2", "dur": 2.5, "inharm": 0.0, "drift_cents": 0.0, "attack_cents": 0.0},
+    {"id": "bz_E2_pluck_old",   "kind": "pluck",  "note": "E2", "dur": 2.5},
+    {"id": "bz_A2_real",        "kind": "guitar", "note": "A2", "dur": 2.5},
+    {"id": "bz_A2_harmonic",    "kind": "guitar", "note": "A2", "dur": 2.5, "inharm": 0.0},
+    {"id": "bz_A2_nodrift",     "kind": "guitar", "note": "A2", "dur": 2.5, "drift_cents": 0.0, "attack_cents": 0.0},
+    {"id": "bz_A2_clean",       "kind": "guitar", "note": "A2", "dur": 2.5, "inharm": 0.0, "drift_cents": 0.0, "attack_cents": 0.0},
+    {"id": "bz_A2_pluck_old",   "kind": "pluck",  "note": "A2", "dur": 2.5}
+  ]
+}
