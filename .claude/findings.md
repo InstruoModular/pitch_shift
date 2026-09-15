@@ -145,6 +145,14 @@
   (worst on low notes shifted up); upshifts lose 4-10 dB of level; attack rise time ~4x ideal (smear 2.1);
   pre-echo ~-15 dB; envelope ripple ~50 Hz (frame rate).
 
+## Listening plugin (tools/listen_plugin)
+- MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
+  idsp::SVFilter::set_parameters wrapping std::tan) persists even with /std:c++latest; plus __builtin_memcpy.
+  No clang-cl in VS/MSYS2. Solution: GCC-built shift_capi.dll (C ABI, static runtime, imports only KERNEL32 + UCRT)
+  loaded by the MSVC JUCE plugin via juce::DynamicLibrary from its own folder; post-build copies the DLL.
+- Verified bit-exact: VST3 in vsthost (host block 64) == shiftbench `current` delayed by exactly 32 samples
+  (max diff <= 3e-19 on pluck/chord at +7/-12), reports latency 32, Transpose int param maps exactly.
+
 ## Machine
 - 12 logical CPUs, 7.8 GB RAM but typically only 0.6-2 GB free (VS Code, Dropbox, browser...): run ONE
   suite at a time. Uncapped pools exhausted the paging file; even 6 workers + 4 vsthosts got the sweep
