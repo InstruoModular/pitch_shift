@@ -26,6 +26,8 @@ struct ShiftAdapter : IShifter
     T impl;
     void reset() override { impl.reset(); }
     void set_shift(int s) override { impl.controls.shift_amount = static_cast<int16_t>(s); }
+    /** Specialise per variant (template<> bool ShiftAdapter<T>::set_param) to expose tuning constants. */
+    bool set_param(const std::string&, double) override { return false; }
     void process(const MonoDspBuffer& in, MonoDspBuffer& out) override { impl.process(in, out); }
 };
 
