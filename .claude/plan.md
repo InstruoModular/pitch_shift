@@ -28,10 +28,13 @@ ears; env_mod_hi_db (64-300 Hz, whole note) does (Arch 0.41 vs shift 0.60). Self
 **STATUS 2026-09-16 (after user answers): REAL AUDIO REPRODUCES THE VERDICT.** Listening material = sax loop
 `660_simondsouza_calling_out_8_beat_Dm_90.wav` (Archetype Transpose-only). `analysis/real_audio.py --mono-f0` shows
 shift FM roughness 4-47x Archetype's (e.g. -7: 23.1 vs 3.5 c). Mechanism: hundreds of imperfect splices/s (rho ~0.6). R1 (grain/xfade) and R2 (fine window, sub-sample, YIN
-smoothing) give at most ~2x on FM roughness, still 3-25x Archetype. **Resume here:** R3 = continuous period-synchronous
-overlap-add engine in `variants/smooth` behind `ola_mode` (patch script scratchpad patch_ola.py); build, identity check
-at ola_mode=0, sweep ola_min_len/ola_periods on the sax with `analysis/real_audio.py --mono-f0`; then synthetic
-regression, chords/complex material, fold, Shift Listen rebuild + smoke test, user re-listen.
+smoothing) give at most ~2x on FM roughness, still 3-25x Archetype. R3 (continuous overlap-add, `variants/smooth` ola_mode=1) is the breakthrough: sax FM roughness 23.6/23.1/7.8/11.2
+-> 6.0/4.4/0.48/0.57 c (Arch 5.8/3.5/0.46/0.24) at 3-5 ms with ola_periods=2, ola_min_len=256, ola_window=512,
+ola_reach=24. **Resume here:** R3c onset handling (ola_onsets, ola_kill_len; results in the latest background run /
+experiments.md), then: synthetic regression of the OLA candidate on suites full + real vs Archetype (onset metrics:
+flam_db, attack_smear, pre_echo; poly), fold with tools/fold_variant.py (note: shift.cpp would carry both paths; strip
+the splice path later), rebuild shift_capi + ShiftListen_SyncDll, tools/smoke_plugin.py, docs/RESULTS.md, user re-listen
+(ask for chord/strum/riff real audio).
 
 (superseded) **STATUS 2026-09-16 late: BLOCKED ON USER INPUT.** env_mod_hi_db turned out phase-sensitive (invalid on harmonic
 content); with it discounted, no metric reproduces "audibly worse" (see findings.md). Disproved: YIN mis-tracking,
