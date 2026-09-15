@@ -1,11 +1,12 @@
 # Pitch Shifter Analysis & Design — Plan
 
 ## Status / Resume here
-**Resume here:** Stage 6 — best candidate `onset_grain` (E5; lineage current -> min_period -> down_margin ->
-long_blind -> long_blind_span -> onset_grain). Fails vs baseline only poly_pitch_err (9.2 vs 1.4 c) and
-sinad_db (63.9 vs 81; plucks 46-50 dB, decay level-step hypothesis in findings.md). E5 promoted to
-reference/best_shift.json (CPU outliers were noise). In progress: E6 `env_match` (level-matched splices for
-pluck SINAD). After that: chord per-note pitch (splice-rate / multi-band / hybrid). Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
+**Resume here:** Stage 6 — BEST is `env_match2` (E7, promoted to reference/best_shift.json; lineage
+current -> min_period -> down_margin -> long_blind -> long_blind_span -> onset_grain -> env_match -> env_match2).
+Beats the VST on latency (11.6 vs 41 ms), flams, attack smear, pre-echo, poly SINAD (33.1 vs 27.9), level,
+LSD. Still fails only poly_pitch_err (9.2 vs 1.4 c) and sinad_db (68.0 vs 81.0). Next: chord per-note pitch
+(see the per-case breakdown in findings.md), then remaining mono SINAD. Iterate with
+`--compare reference/best_shift.json`; judge against the VST with reference/baseline.json. Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
 `--workers 2 --procs 1`, and re-promote if it beats TB=0 on flam_db/attack_smear.
 
 - [x] Stage 0 — scaffolding (.claude, compat headers, gitignore, git init)
