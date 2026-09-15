@@ -1,15 +1,16 @@
 # Pitch Shifter Analysis & Design — Plan
 
 ## Status / Resume here
-**Resume here:** Stage 4 — Quality sweep (full suite, TransBoost=0) run in results/vst/*-full-qsweep;
-pick best Quality, sweep TransBoost=0,0.5,1 at it, promote -> reference/baseline.json. Stage 5 shiftbench
-files written (tools/shiftbench), needs first g++ build.
+**Resume here:** Stage 5 — baseline promoted (VST Quality 1, TransBoost 0: reference/baseline.json).
+Gap analysis of shift:current vs baseline in results/shift-current/*-full-baseline/scorecard.txt; then
+Stage 6 experiments. Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
+`--workers 2 --procs 1`, and re-promote if it beats TB=0 on flam_db/attack_smear.
 
 - [x] Stage 0 — scaffolding (.claude, compat headers, gitignore, git init)
 - [x] Stage 1 — headless VST3 host (`vsthost info|run`, 40 jobs ~1 s; params in findings.md)
 - [x] Stage 2 — signal generator + suites (quick 10 sig x 4 shifts, full 40 x 8)
 - [x] Stage 3 — metrics + selftest (selftest OK; run_suite + report.py work)
-- [ ] Stage 4 — reference characterisation -> reference/baseline.json
+- [x] Stage 4 — reference characterisation -> reference/baseline.json (Q sweep; TransBoost sweep deferred: OOM)
 - [ ] Stage 5 — shiftbench harness + Shift baseline
 - [ ] Stage 6 — iteration loop (see .claude/experiments.md)
 - [ ] Stage 7 — finalise
