@@ -6,7 +6,7 @@
 #include <string>
 
 
-static constexpr size_t audio_block_size = 16;
+static constexpr size_t audio_block_size = 32;
 static constexpr size_t audio_channels = 4;
 static constexpr float hardware_sample_rate = 48000.f;
 using AudioBuffer = idsp::PolySampleBufferStatic<audio_block_size, audio_channels>;

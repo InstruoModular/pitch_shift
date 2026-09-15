@@ -6,7 +6,19 @@
 - `constants.hpp`: `audio_block_size = 16` (user mentioned 32 — confirm), 48 kHz, `MonoDspBuffer = idsp::SampleBufferStatic<16>`.
 - isl `idsp::BiquadFilter<BiquadType::X>`: `set_parameters(norm_f, Q)`, `process(x)`, `reset()`.
 
-## Reference plugin (BL-PitchShift.vst3)
+## Project decisions (user, 2026-09-15)
+- BL-PitchShift.vst3 was a TEST reference. The real target VST is still to come; everything below about
+  BL is a characterisation of the test plugin, and E0-E9 were judged against it (at block 16).
+- Hardware: ideally Cortex-M33 with CMSIS-DSP FFT ("tight, curious if it can be done"), fallback Cortex-A.
+  Order: beat the reference's quality on the host first, then decide hardware compromises.
+- Block size 32 (adjustable). constants.hpp changed 16 -> 32 on 2026-09-15. E7 (env_match2) quick suite at
+  32: lat 13.6 ms, pitch 0.23 c, sinad 71.0, sinad_poly 39.8, flam 1.75, CPU 337 ns/smp, worst block 24.9 %
+  of the 32-smp period (vs 44-62 % of a 16-smp block) -- results/shift-env_match2/*-quick-block32.
+- run_suite is plugin-agnostic now: `--plugin --shift-param [--shift-scale]`; semitone mapping read from the
+  parameter's display texts (verified on BL: pitch_err 0.00 c). VST results go to results/vst-<stem>/
+  (older BL runs are in results/vst/).
+
+## Reference plugin (BL-PitchShift.vst3) -- TEST plugin, archived in reference/plugins/
 - Single-file VST3 DLL, BlueLab / iPlug2 (OpenGL UI). Mono in/out accepted. Full dump: `reference/vst_info.json`.
 - Params (normalised): `Factor` semitones = norm*24-12 (continuous, 0.5 = 0 st) · `Quality` 4 steps (norm k/3)
   · `TransBoost` 0..100 % (continuous) · `Preset`, `Bypass`, unnamed idx5 (ignore).
@@ -24,7 +36,7 @@
 - Even the lean loop got killed once (TransBoost sweep) while an identical Quality sweep survived: free RAM
   fluctuates with other apps. For long reference runs use one setting per invocation, `--workers 2`.
   Sweeps checkpoint `metrics.partial.json` after each setting (promote works on it if renamed).
-- shiftbench block = 16 (constants.hpp), not 32.
+- shiftbench block = audio_block_size from constants.hpp: 16 until 2026-09-15, 32 since (user decision).
 
 ## Metrics
 - Vocoder output has ~50 Hz frame-rate envelope ripple: per-onset latency must be anchored on a global
@@ -104,6 +116,21 @@
 - Splice level matching (E6) helps decaying notes (pluck SINAD +5.4 dB) but a gain estimate that isn't exact
   on steady tones is worse than none: any per-splice gain error is a new periodic step (harmonic -15 dB,
   sine -11 dB, 2.7 Hz level wander). Estimates must be over whole periods and gated/deadbanded.
+  E7 did exactly that (backward whole-period window >= 256 smp, tracked only, |g-1|<0.002 deadband):
+  pluck 49.3->59.6 dB, decay 55.4->67.7 dB, steady tones bit-for-bit unchanged, zero regressions.
+- E7 chord per-note pitch (poly_pitch_err, E7 / VST): simple-ratio material is solved (E5power 0.8/0.2,
+  fifth 0.7/0.0, fourth 0.6/0.0, octave 0.1/0.0 -- YIN locks the common period), the gap is untracked chords
+  with no common period: Amin 25.2/0.0, Cmaj7 27.5/5.6, min2 dyad 19.9/4.8. Error grows with |1-ratio|
+  (-12: 17.0, -7: 15.1, +12: 8.8 vs +-1: 1.3-2.9), consistent with splice-rate sidebands smearing each
+  partial. Median case 1.9 c, 37/72 under 2 c. E7 CPU p50 44 %, p99 62 %, max 84 % (click +12), 0 over budget.
+- E8: untracked chords are FLAT across blind grain 1024-2048 (poly_pitch 24-28 c, sinad_poly 7-9 dB), so the
+  splice rate is not what limits them; E3b's poly gains came from the rest of the poly material. 1536 stays
+  best overall. Tuning path: `shift:tunable` + `--sweep "default_grain=...;fallback_corr_window=...;blind_span_cap=..."`
+  (no rebuild per value; tunable == E7 at defaults).
+- E9: a longer blind correlation window is worse on every chord metric and costs latency + CPU (window/2
+  sets lag_floor); more blind reach buys only 24.2->20.9 c on untracked chords at 105 % CPU. With E8 flat
+  too, the untracked-chord pitch gap (~21-24 c vs VST ~3.5 c) is STRUCTURAL for a single time-domain
+  splicer: no rate/window/reach setting closes it. Needs multi-band or a frequency-domain path.
 - E2 per-case gaps vs VST (results/shift-down_margin/*-full-E2):
   - Mono SINAD: VST plucks sit at the 100 dB metric cap (essentially ideal); ours 46-50 dB on plucks
     (beats VST in only 27/144 mono cases). Hypothesis: on a decaying note the two heads are a grain apart

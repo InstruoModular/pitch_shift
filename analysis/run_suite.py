@@ -15,6 +15,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -31,7 +32,8 @@ import siggen   # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 VSTHOST = ROOT / "build/host/tools/host/vsthost_artefacts/Release/vsthost.exe"
 SHIFTBENCH = ROOT / "build/bench/shiftbench.exe"
-PLUGIN = ROOT / "BL-PitchShift.vst3"
+DEFAULT_PLUGIN = "BL-PitchShift.vst3"
+DEFAULT_SHIFT_PARAM = "Factor"
 MSYS_BIN = r"C:\msys64\ucrt64\bin"
 
 
@@ -74,12 +76,56 @@ def signal_cache(spec: dict) -> Path:
     return p
 
 
+def plugin_path(plugin: Path) -> Path:
+    path = plugin if plugin.is_absolute() else ROOT / plugin
+    if not path.exists():
+        sys.exit(f"plugin not found: {path}")
+    return path
+
+
+def plugin_info(plugin: Path, refresh: bool = False) -> dict:
+    """`vsthost info` for a plugin, cached in reference/plugins/<stem>.json."""
+    path = plugin_path(plugin)
+    cache = ROOT / "reference/plugins" / f"{path.stem}.json"
+    if refresh or not cache.exists():
+        res = subprocess.run([str(VSTHOST), "info", str(path)], cwd=ROOT, capture_output=True, text=True)
+        if res.returncode:
+            sys.exit(res.stderr)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(res.stdout)
+    return json.loads(cache.read_text())
+
+
+def shift_normaliser(info: dict, name: str):
+    """Semitones -> normalised value of the plugin's shift parameter, interpolated from the parameter's own
+    display texts, so any range or taper works as long as the text shows a number (--shift-scale for cents)."""
+    prm = next((p for p in info["params"] if p["name"].lower() == name.lower()), None)
+    if prm is None:
+        sys.exit(f"no parameter {name!r}; plugin has: {[p['name'] for p in info['params']]}")
+    by_value: dict[float, list[float]] = {}
+    for norm, text in prm["values"]:
+        m = re.search(r"[-+]?\d+(?:\.\d+)?", text)
+        if m:
+            by_value.setdefault(float(m.group()), []).append(norm)
+    xs = sorted(by_value)
+    ys = [float(np.mean(by_value[x])) for x in xs]
+    if len(xs) < 2:
+        sys.exit(f"cannot read numeric values from {name!r} display texts: {prm['values'][:3]}")
+
+    def to_norm(value: float) -> float:
+        if not xs[0] <= value <= xs[-1]:
+            sys.exit(f"{name} value {value} outside its range {xs[0]}..{xs[-1]}")
+        return float(np.interp(value, xs, ys))
+
+    return to_norm
+
+
 # ---------------------------------------------------------------------------- processing
 
 def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path, block: int | None,
-                  procs: int | None = None) -> None:
+                  procs: int | None = None, plugin: Path | None = None) -> None:
     if target == "vst":
-        exe, first = VSTHOST, str(PLUGIN)
+        exe, first = VSTHOST, str(plugin_path(plugin))
         block = block or 32
     else:
         exe, first = SHIFTBENCH, target.split(":", 1)[1]
@@ -194,14 +240,9 @@ def scorecard_text(title: str, cand: dict, ref: dict | None, ref_label: str | No
 
 # ---------------------------------------------------------------------------- commands
 
-def cmd_info() -> None:
-    out = ROOT / "reference/vst_info.json"
-    res = subprocess.run([str(VSTHOST), "info", str(PLUGIN)], cwd=ROOT, capture_output=True, text=True)
-    if res.returncode:
-        sys.exit(res.stderr)
-    out.parent.mkdir(exist_ok=True)
-    out.write_text(res.stdout)
-    d = json.loads(res.stdout)
+def cmd_info(plugin: Path) -> None:
+    d = plugin_info(plugin, refresh=True)
+    print(f"(cached -> reference/plugins/{plugin_path(plugin).stem}.json)")
     print(f"{d['name']}  in={d['inputs']} out={d['outputs']} latency={d['latency_samples']}")
     for p in d["params"]:
         v = p["values"]
@@ -222,7 +263,10 @@ def cmd_run(a: argparse.Namespace) -> int:
     base = parse_params(a.params)
     settings = [{**base, **s} for s in parse_sweep(a.sweep)]
     names = [setting_name(s) for s in settings]
-    tdir = a.target.replace(":", "-")
+    plugin = Path(a.plugin) if a.target == "vst" else None
+    to_norm = shift_normaliser(plugin_info(plugin), a.shift_param) if plugin else None
+    target_label = f"vst:{plugin_path(plugin).stem}" if plugin else a.target
+    tdir = f"vst-{plugin_path(plugin).stem}" if plugin else a.target.replace(":", "-")
     run_id = time.strftime("%Y%m%d-%H%M%S") + f"-{suite['name']}" + (f"-{a.tag}" if a.tag else "")
     run_dir = ROOT / "results" / tdir / run_id
     (run_dir / "wav").mkdir(parents=True, exist_ok=True)
@@ -246,8 +290,8 @@ def cmd_run(a: argparse.Namespace) -> int:
                         continue
                     out = run_dir / "wav" / f"{si}_{spec['id']}_{s:+d}.wav"
                     params = dict(setting)
-                    if a.target == "vst":
-                        params["Factor"] = f"{(s + 12) / 24:.6f}"
+                    if plugin:
+                        params[a.shift_param] = f"{to_norm(s * a.shift_scale):.6f}"
                     else:
                         params["shift"] = str(s)
                     jobs.append((str(inp), str(out), params))
@@ -255,7 +299,7 @@ def cmd_run(a: argparse.Namespace) -> int:
             n_jobs += len(jobs)
 
             t = time.time()
-            run_processor(a.target, jobs, run_dir, a.block, a.procs)
+            run_processor(a.target, jobs, run_dir, a.block, a.procs, plugin)
             t_proc += time.time() - t
 
             t = time.time()
@@ -263,7 +307,7 @@ def cmd_run(a: argparse.Namespace) -> int:
             t_meas += time.time() - t
             # Checkpoint after every setting: a low-memory kill then loses one setting, not the sweep.
             (run_dir / "metrics.partial.json").write_text(json.dumps({
-                "target": a.target, "suite": suite["name"], "settings": names[: si + 1], "shifts": shifts,
+                "target": target_label, "suite": suite["name"], "settings": names[: si + 1], "shifts": shifts,
                 "records": records}, indent=1))
             if len(settings) > 1:
                 print(f"  setting {si + 1}/{len(settings)} [{name}] done", flush=True)
@@ -285,10 +329,10 @@ def cmd_run(a: argparse.Namespace) -> int:
             recs_c = [r for r in recs if key_of(r) in common]
             ref_c = [r for r in ref_records if key_of(r) in common]
             card, rcard = aggregate(recs_c), aggregate(ref_c)
-            txt, fails = scorecard_text(f"{a.target} [{name}]", card, rcard, ref_label, len(recs_c))
+            txt, fails = scorecard_text(f"{target_label} [{name}]", card, rcard, ref_label, len(recs_c))
         else:
             card = aggregate(recs)
-            txt, fails = scorecard_text(f"{a.target} [{name}]", card, None, None, len(recs))
+            txt, fails = scorecard_text(f"{target_label} [{name}]", card, None, None, len(recs))
         cards[name] = card
         total_fails += fails
         blocks.append(txt)
@@ -299,7 +343,7 @@ def cmd_run(a: argparse.Namespace) -> int:
         summary += f"\n!! {len(errors)} metric errors, first: {errors[0]['signal']} {errors[0]['shift']}: {errors[0]['metrics']['error']}"
     (run_dir / "scorecard.txt").write_text(summary + "\n")
     (run_dir / "metrics.json").write_text(json.dumps({
-        "target": a.target, "suite": suite["name"], "settings": names, "shifts": shifts,
+        "target": target_label, "suite": suite["name"], "settings": names, "shifts": shifts,
         "compare": a.compare, "scorecards": cards, "records": records}, indent=1))
     print(summary)
 
@@ -317,6 +361,10 @@ def cmd_run(a: argparse.Namespace) -> int:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--target", default="vst", help="vst | shift:<variant>")
+    ap.add_argument("--plugin", default=DEFAULT_PLUGIN, help="VST3 path (relative to repo root or absolute)")
+    ap.add_argument("--shift-param", default=DEFAULT_SHIFT_PARAM, help="plugin parameter that sets the shift")
+    ap.add_argument("--shift-scale", type=float, default=1.0,
+                    help="parameter units per semitone as shown in its display text (100 for cents)")
     ap.add_argument("--suite", default="quick")
     ap.add_argument("--shifts", help="override suite shifts, e.g. 7,12")
     ap.add_argument("--params", help="static params 'Name=value;...' (vst: normalised or @text)")
@@ -337,7 +385,7 @@ def main() -> None:
     a = ap.parse_args()
 
     if a.info:
-        cmd_info()
+        cmd_info(Path(a.plugin))
     elif a.promote:
         cmd_promote(a.promote, a.setting, ROOT / "reference/baseline.json")
     elif a.promote_shift:

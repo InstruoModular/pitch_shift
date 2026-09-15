@@ -4,8 +4,17 @@
 **Resume here:** Stage 6 — BEST is `env_match2` (E7, promoted to reference/best_shift.json; lineage
 current -> min_period -> down_margin -> long_blind -> long_blind_span -> onset_grain -> env_match -> env_match2).
 Beats the VST on latency (11.6 vs 41 ms), flams, attack smear, pre-echo, poly SINAD (33.1 vs 27.9), level,
-LSD. Still fails only poly_pitch_err (9.2 vs 1.4 c) and sinad_db (68.0 vs 81.0). Next: chord per-note pitch
-(see the per-case breakdown in findings.md), then remaining mono SINAD. Iterate with
+LSD. Still fails only poly_pitch_err (9.2 vs 1.4 c) and sinad_db (68.0 vs 81.0). The chord gap is only
+untracked chords (Amin/Cmaj7/min2, ~21-24 c vs VST ~3.5 c). E8 (grain) and E9 (window, reach) confirmed
+it is STRUCTURAL for a single time-domain splicer.
+
+**USER DECISIONS (2026-09-15):** BL-PitchShift was a TEST reference only — the user will supply the ACTUAL
+target VST. Re-run Stage 4 on it (`--plugin <file> --shift-param <name>`, see analyse-vst skill), promote it
+to reference/baseline.json (BL archived in reference/plugins/), re-run the best variant against it, THEN
+decide together how to close the gap (hybrid FD path vs multi-band vs tuning) — don't pick a direction
+before that. Target MCU: ideally Cortex-M33 + CMSIS FFT (tight), fallback Cortex-A; beat quality on the host
+first, make hardware compromises after. Block size 32 (adjustable): constants.hpp set to 32, so all shiftbench
+runs from here on are at 32 (earlier E0-E9 results were at 16). Iterate with
 `--compare reference/best_shift.json`; judge against the VST with reference/baseline.json. Optional later (needs free RAM): TransBoost 0.5/1 at Q1, one setting per run,
 `--workers 2 --procs 1`, and re-promote if it beats TB=0 on flam_db/attack_smear.
 
