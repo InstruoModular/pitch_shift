@@ -31,6 +31,7 @@ import siggen   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 VSTHOST = ROOT / "build/host/tools/host/vsthost_artefacts/Release/vsthost.exe"
+VST2HOST = ROOT / "build/host/vst2host/vst2host.exe"
 SHIFTBENCH = ROOT / "build/bench/shiftbench.exe"
 DEFAULT_PLUGIN = "BL-PitchShift.vst3"
 DEFAULT_SHIFT_PARAM = "Factor"
@@ -83,17 +84,30 @@ def plugin_path(plugin: Path) -> Path:
     return path
 
 
-def plugin_info(plugin: Path, refresh: bool = False) -> dict:
-    """`vsthost info` for a plugin, cached in reference/plugins/<stem>.json."""
+def host_exe(plugin: Path) -> Path:
+    """VST3 bundles/files go through the JUCE host; VST2 DLLs through the clean-room vst2host."""
+    return VST2HOST if plugin_path(plugin).suffix.lower() == ".dll" else VSTHOST
+
+
+def plugin_info(plugin: Path, refresh: bool = False, probe: list[str] | None = None) -> dict:
+    """`<host> info` for a plugin, cached in reference/plugins/<stem>.json. VST2 hosts only sweep the display
+    texts of the parameters in `probe`; the cache is refreshed if a requested one wasn't swept yet."""
     path = plugin_path(plugin)
     cache = ROOT / "reference/plugins" / f"{path.stem}.json"
-    if refresh or not cache.exists():
-        res = subprocess.run([str(VSTHOST), "info", str(path)], cwd=ROOT, capture_output=True, text=True)
+    probe = probe or []
+
+    def swept(d: dict) -> bool:
+        names = {p["name"].lower(): p for p in d["params"]}
+        return all(n.lower() in names and len(names[n.lower()]["values"]) > 1 for n in probe)
+
+    if refresh or not cache.exists() or not swept(json.loads(cache.read_text())):
+        cmd = [str(host_exe(plugin)), "info", str(path)] + (["--probe", ",".join(probe)] if probe else [])
+        res = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
         if res.returncode:
-            sys.exit(res.stderr)
+            sys.exit(res.stderr[-3000:])
         cache.parent.mkdir(parents=True, exist_ok=True)
-        cache.write_text(res.stdout)
-    return json.loads(cache.read_text())
+        cache.write_text(res.stdout, encoding="utf-8")
+    return json.loads(cache.read_text(encoding="utf-8"))
 
 
 def shift_normaliser(info: dict, name: str):
@@ -125,7 +139,7 @@ def shift_normaliser(info: dict, name: str):
 def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path, block: int | None,
                   procs: int | None = None, plugin: Path | None = None) -> None:
     if target == "vst":
-        exe, first = VSTHOST, str(plugin_path(plugin))
+        exe, first = host_exe(plugin), str(plugin_path(plugin))
         block = block or 32
     else:
         exe, first = SHIFTBENCH, target.split(":", 1)[1]
@@ -140,7 +154,8 @@ def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path,
     # shiftbench stays single-process so CPU timings aren't skewed by contention.
     # 2 plugin instances max by default: each loads the plugin's GL-heavy DLL, and this machine has
     # little free RAM. --procs 1 for the leanest run.
-    chunks = max(1, procs or min(2, (os.cpu_count() or 2) // 2)) if target == "vst" else 1
+    heavy = target == "vst" and exe == VST2HOST          # 100 MB+ amp-sim DLLs: one instance unless asked
+    chunks = max(1, procs or (1 if heavy else min(2, (os.cpu_count() or 2) // 2))) if target == "vst" else 1
     procs = []
     for c in range(chunks):
         part = jobs[c::chunks]
@@ -240,8 +255,8 @@ def scorecard_text(title: str, cand: dict, ref: dict | None, ref_label: str | No
 
 # ---------------------------------------------------------------------------- commands
 
-def cmd_info(plugin: Path) -> None:
-    d = plugin_info(plugin, refresh=True)
+def cmd_info(plugin: Path, probe: list[str] | None = None) -> None:
+    d = plugin_info(plugin, refresh=True, probe=probe)
     print(f"(cached -> reference/plugins/{plugin_path(plugin).stem}.json)")
     print(f"{d['name']}  in={d['inputs']} out={d['outputs']} latency={d['latency_samples']}")
     for p in d["params"]:
@@ -264,7 +279,7 @@ def cmd_run(a: argparse.Namespace) -> int:
     settings = [{**base, **s} for s in parse_sweep(a.sweep)]
     names = [setting_name(s) for s in settings]
     plugin = Path(a.plugin) if a.target == "vst" else None
-    to_norm = shift_normaliser(plugin_info(plugin), a.shift_param) if plugin else None
+    to_norm = shift_normaliser(plugin_info(plugin, probe=[a.shift_param]), a.shift_param) if plugin else None
     target_label = f"vst:{plugin_path(plugin).stem}" if plugin else a.target
     tdir = f"vst-{plugin_path(plugin).stem}" if plugin else a.target.replace(":", "-")
     run_id = time.strftime("%Y%m%d-%H%M%S") + f"-{suite['name']}" + (f"-{a.tag}" if a.tag else "")
@@ -385,7 +400,7 @@ def main() -> None:
     a = ap.parse_args()
 
     if a.info:
-        cmd_info(Path(a.plugin))
+        cmd_info(Path(a.plugin), [a.shift_param])
     elif a.promote:
         cmd_promote(a.promote, a.setting, ROOT / "reference/baseline.json")
     elif a.promote_shift:

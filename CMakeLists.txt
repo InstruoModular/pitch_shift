@@ -7,3 +7,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # MSVC tree: JUCE headless VST3 host only. Shiftbench is a separate g++ tree (tools/shiftbench).
 add_subdirectory(JUCE)
 add_subdirectory(tools/host)
+add_subdirectory(tools/vst2host)

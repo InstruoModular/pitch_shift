@@ -1,6 +1,7 @@
 #pragma once
 // Minimal mono WAV I/O shared by vsthost and shiftbench (no library deps).
 // Reads PCM16/24/32 or float32 (first channel); writes float32 mono.
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
