@@ -1,0 +1,16 @@
+{
+  "name": "quick",
+  "shifts": [-12, -7, 7, 12],
+  "signals": [
+    {"id": "sine_E2",      "kind": "sine",     "note": "E2", "dur": 1.5},
+    {"id": "sine_A4",      "kind": "sine",     "note": "A4", "dur": 1.5},
+    {"id": "harm_A2",      "kind": "harmonic", "note": "A2", "dur": 1.5},
+    {"id": "pluck_E2",     "kind": "pluck",    "note": "E2", "dur": 1.5},
+    {"id": "pluck_G3",     "kind": "pluck",    "note": "G3", "dur": 1.5},
+    {"id": "dyad_fifth_A2","kind": "dyad",     "notes": ["A2", "E3"], "dur": 1.5},
+    {"id": "chord_Emaj",   "kind": "chord",    "notes": ["E2", "B2", "E3", "G#3", "B3", "E4"], "dur": 2.0},
+    {"id": "vibrato_D4",   "kind": "vibrato",  "note": "D4", "dur": 1.5},
+    {"id": "burst_A4",     "kind": "burst",    "note": "A4", "count": 4},
+    {"id": "staccato_E3",  "kind": "staccato", "note": "E3", "count": 8, "dur": 1.0}
+  ]
+}

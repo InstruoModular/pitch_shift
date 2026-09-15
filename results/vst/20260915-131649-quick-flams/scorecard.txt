@@ -1,0 +1,26 @@
+== vst [default]  (40 cases)
+metric                      cand
+lat_ms                     40.66
+lat_ms_max                 72.10
+lat_jitter_ms               5.53
+lat_reported_ms            42.67
+pitch_err_cents             0.03
+pitch_err_p95_cents         0.05
+if_dev_cents               23.21
+track_err_cents             9.92
+poly_pitch_err_cents        5.87
+sinad_db                   24.43
+sinad_poly_db              16.76
+subharm_db                -84.02
+hf_junk_db                -89.08
+am_pp_db                    0.76
+am_rate_hz                 62.57
+lsd_db                      4.81
+pre_echo_db               -15.04
+flams                       0.03
+attack_smear                2.10
+disc_db                     0.44
+level_db                    3.45
+nonfinite                   0.00
+
+run: results\vst\20260915-131649-quick-flams  jobs=40  render 0s  process 1s  measure 9s

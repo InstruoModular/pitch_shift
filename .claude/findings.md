@@ -7,7 +7,10 @@
 - isl `idsp::BiquadFilter<BiquadType::X>`: `set_parameters(norm_f, Q)`, `process(x)`, `reset()`.
 
 ## Reference plugin (BL-PitchShift.vst3)
-- Single-file VST3 DLL, BlueLab / iPlug2 (OpenGL UI). Params: TBD from `vsthost info`.
+- Single-file VST3 DLL, BlueLab / iPlug2 (OpenGL UI). Mono in/out accepted. Full dump: `reference/vst_info.json`.
+- Params (normalised): `Factor` semitones = norm*24-12 (continuous, 0.5 = 0 st) · `Quality` 4 steps (norm k/3)
+  · `TransBoost` 0..100 % (continuous) · `Preset`, `Bypass`, unnamed idx5 (ignore).
+- Reported latency 2048 samples (42.7 ms) at Quality 0 -> almost certainly an FFT phase vocoder (4096 window?).
 
 ## Current Shift (shift.cpp)
 - Time-domain pitch-synchronous splicer: 32-tap sinc read, YIN on 4x decimated line, coarse+fine NCC splice,
