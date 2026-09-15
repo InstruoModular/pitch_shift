@@ -182,6 +182,9 @@
   Harmonic synthetic tones never showed it (perfect alignment of every partial). Testing: E17 xfade_min sweep;
   smooth now also has xfade_law (0 amplitude / 1 correlation-adaptive power using the splice NCC rho / 2 equal
   power) -- source only until E17 finishes.
+- E17: crossfade LENGTH does not change the buzz (xfade_min 32/256/768 -> 0.60/0.61/0.62 dB) and costs latency/
+  flams. Consistent with the gain-law hypothesis (an uncorrelated component dips to -3 dB mid-fade regardless of
+  fade length). E18 tests the law itself.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
