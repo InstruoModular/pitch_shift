@@ -113,6 +113,10 @@
   help latency (max 46 -> 54 ms). Shorter blind default_grain trades chord pitch/flams for <1 ms of upshift.
   Best after E14: exact_ratio=1;onset_runway=300;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24
   -> lat 4.54 / max 46.2 ms (Arch 8.16 / 45.2), sinad 68.1, poly 32.8, ppitch 8.90, flam 1.69, smear 0.91.
+- E15a: xfade_frac is the upshift lever (upshift lag_lo = guard + xfade*(r-1), xfade = xfade_frac*grain/drift):
+  0.25 -> 0.0625 took median lat 4.54 -> 3.34 ms and +7 7.5 -> 3.6 ms (Arch 4.5); now faster than Archetype at
+  EVERY shift. Cost is small: LSD 1.87 -> 2.10, flam 1.69 -> 1.89, ppitch 8.90 -> 9.11 (Arch 8.06). 0.125 is
+  the no-compromise point (lat 4.17, passes every metric vs Arch).
 - A 2-knob x 4-setting (8-setting) full sweep got killed for memory at setting 7; keep full sweeps to <= 4
   settings per run (checkpoint saves finished settings in metrics.partial.json; sweep_table reads it).
 - CPU worst-block numbers in multi-setting sweeps swing 30-110 % with no code change (OS noise); re-time the
