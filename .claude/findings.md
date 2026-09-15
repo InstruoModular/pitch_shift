@@ -291,6 +291,13 @@
   (pitch_err, sinad) alongside real_audio.py. Diagnosis: sub-sample bias in grain alignment (prev.pos integer vs
   candidates at floor(lag_c)); ~0.5 smp per 128-smp hop ~ 7 c. Fix = integer offsets from prev.pos (R3d).
   CPU: NCC 97 offsets x 512 samples per spawn may genuinely spike a block (~900 % reported) -- retime after the fix.
+- R3d FIX CONFIRMED: integer-offset alignment removes the offset (quick suite pitch 0.01 c, sinad 65 dB, poly 31 dB,
+  lsd ~Arch, flams below Arch; median latency 3.4 ms with ola_onsets=1). On the sax the OLA candidate now BEATS
+  Archetype on FM roughness at every shift (3.9/3.2/0.0/0.0 vs 5.8/3.5/0.46/0.24 c); AM slightly above Arch on -7 and
+  upshifts, harmonicity close. CANDIDATE = variant smooth with
+  exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24;
+  xfade_frac=0.125;blind_span_cap=538;ola_mode=1;ola_periods=2;ola_min_len=256;ola_window=512;ola_reach=48;
+  ola_kill_len=64;ola_onsets=1. Pending: CPU retime, real + full suite regression.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,

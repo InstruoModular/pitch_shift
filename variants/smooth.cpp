@@ -913,12 +913,17 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min)
         float best = -1.0e30f;
         int32_t best_i = -1;
         const int32_t r = idsp::min<int32_t>(reach, 64);
+        /* R3d: candidates are INTEGER offsets k from the previous head's own sample grid (prev.pos), so reference and
+         * candidates share one rounding and the chosen lag keeps prev.frac exactly. (Truncating w_abs - lag_c here
+         * biased every grain ~0.5 smp the same way: a constant ~7 c pitch offset.) */
+        const int32_t k0 = static_cast<int32_t>(std::lround(lag_nat - lag_new));   // forward distance of the snapped candidate
         for(int32_t j = -r; j <= r; j++)
         {
-            const float lag_c = lag_new + static_cast<float>(j);
+            const int32_t k = k0 + j;
+            const float lag_c = lag_nat - static_cast<float>(k);
             const size_t idx = static_cast<size_t>(j + r);
             if(lag_c < need || lag_c > ceiling) { sc[idx] = -1.0e30f; continue; }
-            const uint32_t cand_end = w_abs - static_cast<uint32_t>(lag_c);
+            const uint32_t cand_end = prev.pos + static_cast<uint32_t>(k);
             float num = 0.f;
             float den = 1.0e-12f;
             for(int32_t n = 1; n <= W; n++)
@@ -933,7 +938,7 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min)
         }
         if(best_i >= 0)
         {
-            float off = static_cast<float>(best_i - r);
+            float off = static_cast<float>(k0 + best_i - r);   // R3d: absolute forward distance from prev
             if(best_i > 0 && best_i < 2 * r && sc[static_cast<size_t>(best_i - 1)] > -1.0e29f && sc[static_cast<size_t>(best_i + 1)] > -1.0e29f)
             {
                 const float a = sc[static_cast<size_t>(best_i - 1)];
@@ -942,7 +947,7 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min)
                 const float den = a - (2.f * b) + c;
                 if(den < -1.0e-9f) off += tairm::clamp(0.5f * (a - c) / den, -0.5f, 0.5f);
             }
-            lag_new += off;
+            lag_new = lag_nat - off;   // R3d: exact, preserves prev.frac
         }
     }
     lag_new = tairm::clamp(lag_new, need, ceiling);
