@@ -21,6 +21,9 @@ that matches/beats `BL-PitchShift.vst3` on pitch accuracy, clarity, latency. Ful
 - Check `findings.md` + `experiments.md` before trying an idea — don't repeat dead ends.
 - Don't re-read isl/JUCE sources; APIs in use are noted in findings.md.
 - End each session: update plan.md "Resume here", log experiments, commit.
+- Run ONE suite at a time (8 GB RAM). Long sweeps: run in background and wait for the notification.
+- PowerShell: don't use `python -c "..."` with double quotes (they get stripped) or `>` for JSON (UTF-16);
+  write scratch scripts to the scratchpad instead.
 
 ## Toolchain facts
 - MSVC 14.50 (VS 2026) + Ninja for host; `C:\msys64\ucrt64\bin\g++` for shiftbench (`functions.hpp` uses `__builtin_memcpy`).

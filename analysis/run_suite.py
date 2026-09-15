@@ -91,8 +91,8 @@ def run_processor(target: str, jobs: list[tuple[str, str, dict]], run_dir: Path,
 
     # VST processing is single-threaded per process: split the manifest across processes.
     # shiftbench stays single-process so CPU timings aren't skewed by contention.
-    # 4 plugin instances max: each loads the plugin's GL-heavy DLL, and this machine has ~8 GB RAM.
-    chunks = max(1, min(4, (os.cpu_count() or 2) // 2)) if target == "vst" else 1
+    # 2 plugin instances max: each loads the plugin's GL-heavy DLL, and this machine has little free RAM.
+    chunks = max(1, min(2, (os.cpu_count() or 2) // 2)) if target == "vst" else 1
     procs = []
     for c in range(chunks):
         part = jobs[c::chunks]
@@ -224,34 +224,45 @@ def cmd_run(a: argparse.Namespace) -> int:
     (run_dir / "wav").mkdir(parents=True, exist_ok=True)
 
     t = time.time()
-    jobs, meas = [], []
-    for si, (setting, name) in enumerate(zip(settings, names)):
-        for spec in suite["signals"]:
-            inp = signal_cache(spec)
-            for s in shifts:
-                if spec["kind"] == "silence" and s != shifts[-1]:
-                    continue
-                out = run_dir / "wav" / f"{si}_{spec['id']}_{s:+d}.wav"
-                params = dict(setting)
-                if a.target == "vst":
-                    params["Factor"] = f"{(s + 12) / 24:.6f}"
-                else:
-                    params["shift"] = str(s)
-                jobs.append((str(inp), str(out), params))
-                meas.append((spec, s, str(out), name))
+    for spec in suite["signals"]:
+        signal_cache(spec)
     t_render = time.time() - t
 
-    t = time.time()
-    run_processor(a.target, jobs, run_dir, a.block)
-    t_proc = time.time() - t
-
-    t = time.time()
-    # Each worker imports numpy/scipy (~150 MB commit); uncapped pools exhaust the Windows paging
-    # file, especially with two suites running at once.
-    workers = a.workers or max(1, min(6, (os.cpu_count() or 2) - 1))
+    # One setting at a time: process, measure, delete its WAVs. This machine has little free RAM
+    # (see findings.md "Machine"), so worker count stays low and nothing accumulates across settings.
+    workers = a.workers or max(1, min(3, (os.cpu_count() or 2) - 1))
+    records, n_jobs, t_proc, t_meas = [], 0, 0.0, 0.0
     with ProcessPoolExecutor(max_workers=workers) as ex:
-        records = list(ex.map(_measure_job, meas, chunksize=4))
-    t_meas = time.time() - t
+        for si, (setting, name) in enumerate(zip(settings, names)):
+            jobs, meas = [], []
+            for spec in suite["signals"]:
+                inp = signal_cache(spec)
+                for s in shifts:
+                    if spec["kind"] == "silence" and s != shifts[-1]:
+                        continue
+                    out = run_dir / "wav" / f"{si}_{spec['id']}_{s:+d}.wav"
+                    params = dict(setting)
+                    if a.target == "vst":
+                        params["Factor"] = f"{(s + 12) / 24:.6f}"
+                    else:
+                        params["shift"] = str(s)
+                    jobs.append((str(inp), str(out), params))
+                    meas.append((spec, s, str(out), name))
+            n_jobs += len(jobs)
+
+            t = time.time()
+            run_processor(a.target, jobs, run_dir, a.block)
+            t_proc += time.time() - t
+
+            t = time.time()
+            records += list(ex.map(_measure_job, meas, chunksize=4))
+            t_meas += time.time() - t
+            if len(settings) > 1:
+                print(f"  setting {si + 1}/{len(settings)} [{name}] done", flush=True)
+            if not a.keep_wav:
+                for _, o, _ in jobs:
+                    for p in (Path(o), Path(o + ".json")):
+                        p.unlink(missing_ok=True)
     errors = [r for r in records if "error" in r["metrics"]]
 
     ref_label, ref_records = (None, None)
@@ -275,7 +286,7 @@ def cmd_run(a: argparse.Namespace) -> int:
         blocks.append(txt)
 
     summary = "\n\n".join(blocks)
-    summary += f"\n\nrun: {run_dir.relative_to(ROOT)}  jobs={len(jobs)}  render {t_render:.0f}s  process {t_proc:.0f}s  measure {t_meas:.0f}s"
+    summary += f"\n\nrun: {run_dir.relative_to(ROOT)}  jobs={n_jobs}  render {t_render:.0f}s  process {t_proc:.0f}s  measure {t_meas:.0f}s"
     if errors:
         summary += f"\n!! {len(errors)} metric errors, first: {errors[0]['signal']} {errors[0]['shift']}: {errors[0]['metrics']['error']}"
     (run_dir / "scorecard.txt").write_text(summary + "\n")
