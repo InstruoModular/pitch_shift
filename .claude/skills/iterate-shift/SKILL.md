@@ -9,9 +9,10 @@ Per experiment (keep each small and single-purpose):
 1. Read the last scorecard (`results/shift/<latest>/scorecard.txt`), `.claude/findings.md`, and the tail of
    `.claude/experiments.md`. Pick the largest gap that isn't a known dead end.
 2. Append a row to `experiments.md`: `| E<n> | date | variant | hypothesis | change | | |`.
-3. Implement in `variants/<name>.cpp/.hpp` (same API as `Shift`: `Controls{shift_amount}`, `reset()`,
-   `process(const MonoDspBuffer&, MonoDspBuffer&)`), register it, rebuild. Prefer copying the current best
-   and changing one thing; tuning constants can be done via a variant subclass/param struct.
+3. `python tools/make_variant.py <name> [--from current|<best_variant>]` clones into `variants/<name>.hpp/.cpp`
+   (class `Shift_<name>`, self-registering), then change ONE thing and `cmake --build build/bench`.
+   Same API as `Shift`: `Controls{shift_amount}`, `reset()`, `process(const MonoDspBuffer&, MonoDspBuffer&)`.
+   For parameter sweeps, expose constants through `set_param` in the adapter instead of cloning per value.
 4. `bench-shift` with `--suite quick --compare results/shift/<best-run>`.
 5. Fill in the row: key deltas (<=3 numbers) + verdict (keep / drop / promising).
    Put any generalisable lesson in `findings.md` (one bullet).
