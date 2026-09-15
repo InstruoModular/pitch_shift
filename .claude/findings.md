@@ -101,6 +101,9 @@
   attack as an echo (E4b bursts +12: +37 dB flam_db at a 32 ms jump). Every note starts untracked, so the
   blind grain governs attacks; long grains are only safe for sustained material.
 - Use `--suite poly` (72 jobs, ~40 s) for chord experiments.
+- Splice level matching (E6) helps decaying notes (pluck SINAD +5.4 dB) but a gain estimate that isn't exact
+  on steady tones is worse than none: any per-splice gain error is a new periodic step (harmonic -15 dB,
+  sine -11 dB, 2.7 Hz level wander). Estimates must be over whole periods and gated/deadbanded.
 - E2 per-case gaps vs VST (results/shift-down_margin/*-full-E2):
   - Mono SINAD: VST plucks sit at the 100 dB metric cap (essentially ideal); ours 46-50 dB on plucks
     (beats VST in only 27/144 mono cases). Hypothesis: on a decaying note the two heads are a grain apart
