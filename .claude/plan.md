@@ -27,9 +27,11 @@ warble").** The metric suite missed modulation artefacts. Stages:
 ears; env_mod_hi_db (64-300 Hz, whole note) does (Arch 0.41 vs shift 0.60). Selftest for it added.
 **STATUS 2026-09-16 (after user answers): REAL AUDIO REPRODUCES THE VERDICT.** Listening material = sax loop
 `660_simondsouza_calling_out_8_beat_Dm_90.wav` (Archetype Transpose-only). `analysis/real_audio.py --mono-f0` shows
-shift FM roughness 4-47x Archetype's (e.g. -7: 23.1 vs 3.5 c). **Resume here:** mechanism from sax_events (scratchpad
-sax_events.py: untracked %, re-seats, rho per shift), then fix experiments on `variants/smooth` measured with
-real_audio.py on the sax (+ add chord/strum/riff real material when available), synthetic suites as regression only.
+shift FM roughness 4-47x Archetype's (e.g. -7: 23.1 vs 3.5 c). Mechanism: hundreds of imperfect splices/s (rho ~0.6). R1 (grain/xfade) and R2 (fine window, sub-sample, YIN
+smoothing) give at most ~2x on FM roughness, still 3-25x Archetype. **Resume here:** R3 = continuous period-synchronous
+overlap-add engine in `variants/smooth` behind `ola_mode` (patch script scratchpad patch_ola.py); build, identity check
+at ola_mode=0, sweep ola_min_len/ola_periods on the sax with `analysis/real_audio.py --mono-f0`; then synthetic
+regression, chords/complex material, fold, Shift Listen rebuild + smoke test, user re-listen.
 
 (superseded) **STATUS 2026-09-16 late: BLOCKED ON USER INPUT.** env_mod_hi_db turned out phase-sensitive (invalid on harmonic
 content); with it discounted, no metric reproduces "audibly worse" (see findings.md). Disproved: YIN mis-tracking,

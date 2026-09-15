@@ -265,6 +265,13 @@
   never exercised. Testing the user's original suggestions on real audio (R2). If still far off, consider a true
   period-synchronous overlap-add (PSOLA-style) path for tracked voiced material: Archetype's near-zero FM on the sax
   (+12: 0.24 c) suggests it does something epoch-synchronous rather than occasional two-head splices.
+- R2 (sax): the user's knob-level suggestions barely move it on real audio: longer fine window 23.1->18.2 c at -7 (low-
+  latency base), sub-sample refinement ~0, YIN median/glide/slew ~0 or worse. Best anything so far: mg512/xf.5/fine 256
+  = 14.8/15.2/4.3/5.9 c at 8-10 ms vs Arch 5.8/3.5/0.46/0.24 at 4-6 ms. CONCLUSION: retuning the two-head splicer can't
+  get there. Structural problem: output is a single head most of the time, switched to a new one at each imperfect
+  splice. Next (R3): continuous period-synchronous overlap-add -- output always the sum of 50 %-overlapped Hann grains
+  on the resampled read, each new grain = natural continuation jumped by whole periods to hold a target lag, causally
+  NCC-aligned, window-sum normalised. Formant-naive like Archetype (its probe showed no formant preservation).
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
