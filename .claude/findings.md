@@ -301,6 +301,40 @@
 - R3e CPU: the OLA spawn's full-rate NCC (97 offsets x 512 smp) is a REAL block overrun: min-of-3 worst block 734-748 %
   of the 32-smp budget on the desktop (mean ~10 %). Unusable for firmware. Fix: coarse search on the existing 4x
   decimated line (25 x 128) + fine +-3 full-rate x 128 on the same integer-offset grid (~12x less work per spawn).
+  RESULT (ola_coarse=1): worst block 734-748 % -> p50 55.7 %, max 58.0 % (min-of-3), mean ~0.5 us/smp.
+- R3e quality: quick suite passes every metric vs Arch (pitch 0.07 c, sinad 62.8, lat 3.3 ms). But on REAL material the
+  coarse search loses ground: sax +12 fm 0.00 -> 4.32 c (am 0.54 dB), -7 3.15 -> 5.45 c (Arch 3.50); realistic guitar
+  suite chords weaker than Arch (poly sinad 20.7 vs 23.6, poly pitch 16.5 vs 11.7 c, fm_rough 5.3 vs 3.1, lsd 2.3 vs
+  1.6) while latency (2.7 vs 8.3 ms), mono sinad, pitch and flams beat it. Coarse picks on the <=4.5 kHz decimated
+  line + fine +-3 can't recover a wrong pick -> widen the fine stage (R3f); chords = untracked OLA path to improve next.
+- R3f/R3g: widening the fine stage around ONE coarse pick never recovered sax +12 (fm stuck ~2.6 c for reach 3..24,
+  window up to 512; only reach 48 = full search gave 0). Runs are deterministic, so it's the pick, not noise. Keeping
+  the top-3 coarse local maxima and refining each (+-3, window 256) gives sax fm 3.80/2.95/0/0 c (full search
+  3.93/3.15/0/0, Arch 5.84/3.50/0.46/0.24); top-4 identical.
+- R3g real suite: nearly the whole gap to Archetype is ONE signal, gch_Cmaj7 (C3 E3 G3 B3 E4; the maj7 puts the
+  common period ~2900 smp, beyond YIN's 1200 range). YIN is never valid there, the OLA path jumps by the fixed
+  256 fallback holding the lag at target +-64, and grains overlap misaligned: note f0s ~12 dB below ideal (RMS
+  intact), poly sinad -6.7 dB (Arch +10.2, pre-OLA splicer +11.8, whose untracked search spans far more lag).
+  Other chords (Amin 40-48 % valid via 2x A2 period) match/beat Arch. Remaining general gap: single-note lsd.
+- R3j/R3k fix for untracked chords: when no YIN dip passes 0.30, use the DEEPEST d' dip as the OLA jump quantum
+  (`yin_weak_threshold`=0.5; period_valid untouched so splice/onset paths unchanged), but only after 2 consecutive
+  weak frames agree within 6 % (`yin_weak_stable`=2). Cmaj7 note levels go from ~12 dB to ideal (~25). Without the
+  gate sax +12 fm regressed 0 -> 2.6 c (one-off dips in transitions); a threshold alone could not separate them
+  (sax needs <=.35, Cmaj7 >=.45). An octave-low deepest dip is harmless for OLA: a period multiple still aligns.
+- SAX CAVEAT (2026-09-16): real_audio.py --mono-f0 FM/AM roughness on the sax loop is computed from ONE voiced run
+  (0.59-1.50 s, the only f0_track run >= 0.4 s in 5.33 s). Every sax fm/am number in experiments.md is 0.9 s of
+  audio, which is why +12 flips 0.00 <-> ~3.8 c with small YIN frame-timing changes (pb4, restart, burst, glide).
+  Treat it as a noisy sanity check, not a gate; the synthetic quick/real/full suites (dozens of cases) decide.
+  Ask the user for longer real material (DI guitar: chords/strums/riffs) before trusting sax-only verdicts.
+- lsd_db definition (metrics.log_spectral_distance): 1/6-octave band energies 50 Hz-16 kHz from a 2048/512 STFT,
+  frames within 30 dB of the loudest ideal frame (so attack AND much of the decay), floor = max frame energy x 1e-7
+  (-70 dB), mean over frames of the rms dB error across ALL bands. Near-empty bands between harmonics therefore weigh
+  as much as the partials: low-level fill (grain sidebands, leakage, noise) drives it. A -60 dB-masked frame LSD
+  proxy puts R3l AHEAD of Archetype on most single-note cases where the suite metric puts it behind.
+- Harness bug (fixed 2026-09-16): shiftbench wrote job meta JSON through a 512-byte snprintf; with >~20 knobs the
+  params list truncated it and retime/run_suite failed on JSON decode. Now built as std::string.
+- Machine: with Ableton Live open (~670 MB) free RAM sits ~0.8 GB and background harness runs get killed even at
+  --workers 1; run checks in the foreground one at a time, or ask the user to close Ableton during regressions.
 
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,

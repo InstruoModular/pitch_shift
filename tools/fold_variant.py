@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-KNOB_RE = re.compile(r"static inline (float|bool|size_t|uint32_t|int32_t)(\s+)(\w+)(\s*)=\s*([^;]+);")
+KNOB_RE = re.compile(r"static inline (float|bool|size_t|uint32_t|int32_t|int)(\s+)(\w+)(\s*)=\s*([^;]+);")
 
 
 def literal(kind: str, value: str) -> str:
@@ -64,6 +64,12 @@ def main() -> None:
     cpp = re.sub(r"^#include \"variant\.hpp\".*\n", "", cpp, flags=re.M)
     cpp = re.sub(r"^static RegisterShifter .*\n", "", cpp, flags=re.M)
     cpp = re.sub(r"template<> bool ShiftAdapter<Shift>::set_param\(.*?\n\}\n", "", cpp, flags=re.S)
+    # SHIFT_EVENTS debug log (getenv/fopen): the helper and every one- or two-line logging statement
+    cpp = re.sub(r"^[ \t]*/\*[^\n]*debug event log[^\n]*\*/\n[ \t]*FILE\* events_file\(\)\n[ \t]*\{.*?\n[ \t]*return f;\n[ \t]*\}\n",
+                 "", cpp, flags=re.S | re.M)
+    cpp = re.sub(r"^[ \t]*/\*\s*debug:[^\n]*\*/\n(?=[ \t]*if\(FILE\* ev = events_file\(\)\))", "", cpp, flags=re.M)
+    cpp = re.sub(r"^[ \t]*if\(FILE\* ev = events_file\(\)\) std::fprintf\(.*?\);[ \t]*\n", "", cpp, flags=re.S | re.M)
+    cpp = re.sub(r"^[ \t]*(?:float )?ev_score = [^;\n]*;[^\n]*\n", "", cpp, flags=re.M)   # debug-log-only local
 
     used = set()
 
@@ -73,7 +79,15 @@ def main() -> None:
         value = literal(kind, overrides.get(name, default))
         return f"static constexpr {kind}{sp1}{name}{sp2}= {value};"
 
+    def freeze_global(m: re.Match) -> str:   # anonymous-namespace globals tagged "runtime-tunable"
+        indent, kind, sp1, name, sp2, default, comment = m.groups()
+        used.add(name)
+        value = literal(kind, overrides.get(name, default))
+        return f"{indent}static constexpr {kind}{sp1}{name}{sp2}= {value};{comment}"
+
     hpp = KNOB_RE.sub(freeze, hpp)
+    cpp = re.sub(r"^([ \t]*)(float|bool|int)(\s+)(\w+)(\s*)=\s*([^;]+);([ \t]*//[^\n]*runtime-tunable[^\n]*)$",
+                 freeze_global, cpp, flags=re.M)
     unknown = set(overrides) - used
     if unknown:
         sys.exit(f"unknown knob(s) for variant {v}: {sorted(unknown)}")
@@ -82,7 +96,8 @@ def main() -> None:
         for n, line in enumerate(text.splitlines(), 1):
             code = re.sub(r"//.*$", "", line)                     # mentions inside comments are fine
             code = re.sub(r"/\*.*?\*/", "", code)
-            if re.search(r"\bstatic inline\b|\bset_param\b|\bRegisterShifter\b|\bShiftAdapter\b|variant\.hpp", code):
+            if re.search(r"\bstatic inline\b|\bset_param\b|\bRegisterShifter\b|\bShiftAdapter\b|variant\.hpp"
+                         r"|\bevents_file\b|\bgetenv\b|SHIFT_EVENTS|\bev_score\b", code):
                 leftovers.append(f"  {fname}:{n}: {line.strip()[:120]}")
     if leftovers:
         sys.exit("fold left harness-only code behind; refusing to write:\n" + "\n".join(leftovers))

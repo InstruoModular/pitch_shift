@@ -69,6 +69,7 @@ void Shift_smooth::reset()
     w_abs     = static_cast<uint32_t>(history_size);
     dec_abs   = static_cast<uint32_t>(history_size / dec_factor);
     dec_phase = 0u;
+    pre_valid = false;   // R3i
 
     active       = 0u;
     head_gain.fill(1.f);
@@ -87,6 +88,12 @@ void Shift_smooth::reset()
     period       = default_grain;
     period_valid = false;
     period_hold  = 0u;
+    weak_valid   = false;   // R3j
+    yin_burst_on    = false;   // R3n
+    burst_prev      = 0.f;     // R3o
+    yin_burst_count = 0u;
+    yin_wait        = 0u;
+    weak_agree   = 0u;      // R3k
     found_count  = 0u;   // smooth
     for(auto& g : grains) g = OlaGrain{};   // R3
 
@@ -269,8 +276,10 @@ void Shift_smooth::_update_grain()
 
 void Shift_smooth::_pitch_tick()
 {
+    if(restart_age < 100000u) restart_age++;   // R3q
     if(!yin_running)
     {
+        if(yin_wait > 0u) { yin_wait--; return; }   // R3n: let post-onset audio fill the snapshot
         if(dec_abs < static_cast<uint32_t>(yin_analysis)) return;
 
         const uint32_t start = dec_abs - static_cast<uint32_t>(yin_analysis);
@@ -286,8 +295,10 @@ void Shift_smooth::_pitch_tick()
      * ~50k multiply-accumulates, which would be a spike big enough to matter in
      * a 16-sample block; spread over 25 blocks it is a flat few percent, and an
      * 8 ms update rate is still far faster than a guitar changes note. */
-    const size_t end = ((yin_cursor + yin_per_block) < (yin_max_lag + 1))
-                     ? (yin_cursor + yin_per_block)
+    const size_t per_block = yin_burst_on ? std::max(yin_per_block, static_cast<size_t>(std::max(yin_burst, 1)))
+                                          : yin_per_block;   // R3n
+    const size_t end = ((yin_cursor + per_block) < (yin_max_lag + 1))
+                     ? (yin_cursor + per_block)
                      : (yin_max_lag + 1);
 
     for(size_t tau = yin_cursor; tau < end; tau++)
@@ -306,6 +317,18 @@ void Shift_smooth::_pitch_tick()
     {
         _yin_finalise();
         yin_running = false;
+        if(yin_burst_on)   // R3n: stop on a fresh lock (finalise re-arms period_hold) or after the frame cap
+        {
+            yin_burst_count++;
+            const bool fresh = period_valid && (period_hold == yin_hold_frames);
+            bool done = fresh;
+            if(fresh && (yin_burst_snap > 0))   // R3q: keep refining at burst speed until two locks agree within 1 %
+            {
+                done = (burst_last > 0.f) && (std::fabs(period - burst_last) < (0.01f * burst_last));
+                burst_last = period;
+            }
+            if(done || yin_burst_count >= static_cast<uint32_t>(std::max(yin_burst_frames, 1))) yin_burst_on = false;
+        }
     }
 }
 
@@ -319,6 +342,8 @@ void Shift_smooth::_yin_finalise()
     {
         period_hold  = 0u;
         period_valid = false;
+        weak_valid   = false;   // R3j
+        weak_agree   = 0u;      // R3k
         return;
     }
 
@@ -355,6 +380,52 @@ void Shift_smooth::_yin_finalise()
          * jolting the grain length -- and with it the latency -- mid-note. */
         if(period_hold > 0u) period_hold--;
         period_valid = (period_hold > 0u);
+        /* R3j: chords with no short common period never pass the threshold; the deepest dip still names the
+         * lag at which most partials line up, which is a far better OLA jump than a fixed fallback. */
+        const bool was_weak = weak_valid;   // R3l
+        weak_valid = false;
+        if(yin_weak_threshold <= 0.f) weak_agree = 0u;
+        if(yin_weak_threshold > 0.f)
+        {
+            /* R3r: the strong tracker wants a long range (a fourth's common period is 3 note periods), but the
+             * deepest dip out there can be a partial-chord multiple that aligns some notes and not others. */
+            const size_t weak_hi = (yin_weak_max_lag > 0 && static_cast<size_t>(yin_weak_max_lag) < yin_max_lag)
+                                 ? static_cast<size_t>(yin_weak_max_lag) : yin_max_lag;
+            size_t deep = yin_min_lag;
+            for(size_t tau = yin_min_lag + 1; tau <= weak_hi; tau++)
+                if(yin_d[tau] < yin_d[deep]) deep = tau;
+            if(!(yin_d[deep] < yin_weak_threshold && deep > yin_min_lag)) weak_agree = 0u;
+            if(yin_d[deep] < yin_weak_threshold && deep > yin_min_lag)
+            {
+                float tw = static_cast<float>(deep);
+                if(deep < weak_hi)
+                {
+                    const float a = yin_d[deep - 1];
+                    const float b = yin_d[deep];
+                    const float c = yin_d[deep + 1];
+                    const float denom = a - (2.f * b) + c;
+                    if(denom > 1.0e-9f) tw += 0.5f * (a - c) / denom;
+                }
+                const float wp = tw * static_cast<float>(dec_factor);
+                /* R3k: require N consecutive agreeing weak frames before trusting the dip. */
+                if(weak_agree > 0u && std::fabs(wp - weak_cand) < (yin_weak_tol * weak_cand)) weak_agree++;
+                else weak_agree = 1u;
+                weak_cand = wp;
+                if(weak_agree >= static_cast<uint32_t>(tairm::max(yin_weak_stable, 1.f)))
+                {
+                    weak_period = wp;
+                    weak_valid  = true;
+                }
+            }
+        }
+        /* R3l: an established weak period survives a few missing/disagreeing frames (strum, decay) with its old
+         * value; a one-off dip is never adopted, it only spends the hold. */
+        if(weak_valid) weak_hold_left = static_cast<uint32_t>(tairm::max(yin_weak_hold, 0.f));
+        else if(was_weak && weak_hold_left > 0u && yin_weak_threshold > 0.f)
+        {
+            weak_hold_left--;
+            weak_valid = true;
+        }
         return;
     }
 
@@ -369,6 +440,16 @@ void Shift_smooth::_yin_finalise()
     }
 
     const float found = tau_f * static_cast<float>(dec_factor);
+
+    /* R3o: the first post-onset frame still holds the attack transition and can name a period 10-15 % off; adopted
+     * outright (it exceeds period_jump) it misaligns every grain until the next frame. During a burst, only adopt an
+     * estimate the following burst frame confirms. */
+    if(yin_burst_on && (yin_burst_confirm > 0))
+    {
+        const bool agree = (burst_prev > 0.f) && (std::fabs(found - burst_prev) < (period_jump * burst_prev));
+        burst_prev = found;
+        if(!agree) return;
+    }
 
     /* Track small drifts (bends, vibrato) smoothly so the grain length does not
      * jitter; jump outright on a real note change. */
@@ -385,7 +466,7 @@ void Shift_smooth::_yin_finalise()
             est = std::max(std::min(a, b), std::min(std::max(a, b), c));
         }
     }
-    if(period_valid && std::fabs(est - period) < (period_jump * period))
+    if(period_valid && std::fabs(est - period) < (period_jump * period) && !(yin_burst_on && (yin_burst_snap > 0)))   // R3q: bursts snap
     {
         float step = period_alpha * (est - period);
         if(period_slew > 0.f)
@@ -401,6 +482,8 @@ void Shift_smooth::_yin_finalise()
     }
     period_valid = true;
     period_hold  = yin_hold_frames;
+    weak_valid   = false;   // R3j
+    weak_agree   = 0u;      // R3k
 }
 
 int32_t Shift_smooth::_splice_coarse(uint32_t ref, int32_t sign)
@@ -861,7 +944,7 @@ float Shift_smooth::_ncc_frac(uint32_t rbase, double dist, int32_t sign, int32_t
 
 
 /* R3: continuous period-synchronous overlap-add. */
-void Shift_smooth::_ola_spawn(int youngest, bool at_min)
+void Shift_smooth::_ola_spawn(int youngest, bool at_min, bool presearch)
 {
     int slot = -1;
     for(int k = 0; k < static_cast<int>(grains.size()); k++)
@@ -875,7 +958,10 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min)
             if(grains[static_cast<size_t>(k)].age > grains[static_cast<size_t>(slot)].age) slot = k;
     }
 
-    const float p_in = period_valid ? tairm::clamp(period, min_period, max_period) : ola_fallback_period;
+    const bool  p_weak = !period_valid && weak_valid && (yin_weak_threshold > 0.f);   // R3j
+    const bool  p_ok   = period_valid || p_weak;
+    const float p_in = period_valid ? tairm::clamp(period, min_period, max_period)
+                     : (p_weak ? tairm::clamp(weak_period, min_period, max_period) : ola_fallback_period);
     const float len_f = tairm::clamp(ola_periods * p_in / ratio, ola_min_len, ola_max_len);
     uint32_t len = static_cast<uint32_t>(len_f * 0.5f) * 2u;
     if(len < 16u) len = 16u;
@@ -887,12 +973,13 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min)
     const float ceiling = static_cast<float>(history_size) - static_cast<float>(ola_window) - 96.f;
 
     float lag_new = at_min ? need : target;   // R3c: onset restarts at the minimum lag
+    float ev_score = -2.f;                    // debug log: best full-rate NCC of the chosen alignment (-2 = none)
     if(youngest >= 0 && !at_min)
     {
         const Head& prev = grains[static_cast<size_t>(youngest)].h;
         const float lag_nat = static_cast<float>(w_abs - prev.pos) - prev.frac;
         int32_t reach = ola_reach;
-        if(period_valid)
+        if(p_ok)   // R3j: a weak period still quantises the jump
         {
             const float m = std::round((lag_nat - target) / p_in);
             lag_new = lag_nat - (m * p_in);
@@ -907,47 +994,144 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min)
 
         /* Causal NCC: the W samples just before the previous grain's read point vs the W samples before each
          * candidate start. */
-        const int32_t W = ola_window;
+        int32_t W = ola_window;
         const uint32_t ref_end = prev.pos;
         std::array<float, 129> sc{};
         float best = -1.0e30f;
         int32_t best_i = -1;
-        const int32_t r = idsp::min<int32_t>(reach, 64);
+        int32_t r = idsp::min<int32_t>(reach, 64);
+
+        /* R3e: two-stage search. The coarse pass runs on the 4x decimated line (every candidate k is a multiple of
+         * the decimation factor there), then the full-rate pass below only has to resolve +-ola_fine_reach around it
+         * with a short window: ~12x less work per spawn than scoring every offset at full rate.
+         * R3f: the coarse pass keeps its best ola_coarse_cands local maxima; each is refined at full rate and the
+         * highest full-rate score wins (a single coarse pick lands on the wrong peak on bright material). */
+        std::array<int32_t, 4> centers{};
+        int32_t n_centers = 1;
+        centers[0] = static_cast<int32_t>(std::lround(lag_nat - lag_new));
+        const int32_t k_snap = centers[0];   // R3i: presearch centres are stored relative to the period snap
+        if(ola_coarse != 0)
+        {
+            if(!presearch && pre_valid && pre_grain == youngest)   // R3i: centres found in an earlier block
+            {
+                /* Upshift lag shrinks between presearch and spawn, so the snap may land whole periods away: move the
+                 * stored centres by the snap change quantised to whole periods (the NCC peaks repeat per period; an
+                 * untracked snap just drifts with the lag and quantises to no move). */
+                const int32_t d = static_cast<int32_t>(std::lround(std::round(static_cast<float>(k_snap - pre_snap) / p_in) * p_in));
+                n_centers = pre_n;
+                for(int32_t ci = 0; ci < n_centers; ci++)
+                    centers[static_cast<size_t>(ci)] = pre_centers[static_cast<size_t>(ci)] + d;
+            }
+            else
+            {
+                const int32_t df  = static_cast<int32_t>(dec_factor);
+                const int32_t Wd  = idsp::max<int32_t>(W / df, 16);
+                const int32_t rd  = idsp::min<int32_t>(idsp::max<int32_t>((r + df - 1) / df, 1), 16);
+                const int32_t kd0 = static_cast<int32_t>(std::lround(static_cast<float>(centers[0]) / static_cast<float>(df)));
+                const uint32_t ref_d = ref_end / static_cast<uint32_t>(df);
+                std::array<float, 33> scd{};
+                for(int32_t jd = -rd; jd <= rd; jd++)
+                {
+                    const int32_t kd = kd0 + jd;
+                    const size_t id = static_cast<size_t>(jd + rd);
+                    const float lag_c = lag_nat - static_cast<float>(kd * df);
+                    if(lag_c < need || lag_c > ceiling) { scd[id] = -1.0e30f; continue; }
+                    const uint32_t cand_d = ref_d + static_cast<uint32_t>(kd);
+                    float num = 0.f;
+                    float den = 1.0e-12f;
+                    for(int32_t n = 1; n <= Wd; n++)
+                    {
+                        const float a = dec_history[(ref_d  - static_cast<uint32_t>(n)) & dec_mask];
+                        const float b = dec_history[(cand_d - static_cast<uint32_t>(n)) & dec_mask];
+                        num += a * b;
+                        den += b * b;
+                    }
+                    scd[id] = num / std::sqrt(den);
+                }
+                /* Top-N local maxima (ends count as maxima against their single neighbour). */
+                const int32_t want = idsp::min<int32_t>(idsp::max<int32_t>(ola_coarse_cands, 1), 4);
+                std::array<float, 4> top_s{};
+                top_s.fill(-1.0e29f);
+                n_centers = 0;
+                for(int32_t id = 0; id <= 2 * rd; id++)
+                {
+                    const float s = scd[static_cast<size_t>(id)];
+                    if(s <= -1.0e29f) continue;
+                    if(id > 0 && scd[static_cast<size_t>(id - 1)] > s) continue;
+                    if(id < 2 * rd && scd[static_cast<size_t>(id + 1)] >= s) continue;
+                    int32_t slot_i = n_centers < want ? n_centers : want - 1;
+                    if(n_centers >= want && s <= top_s[static_cast<size_t>(slot_i)]) continue;
+                    while(slot_i > 0 && top_s[static_cast<size_t>(slot_i - 1)] < s)
+                    {
+                        top_s[static_cast<size_t>(slot_i)]   = top_s[static_cast<size_t>(slot_i - 1)];
+                        centers[static_cast<size_t>(slot_i)] = centers[static_cast<size_t>(slot_i - 1)];
+                        slot_i--;
+                    }
+                    top_s[static_cast<size_t>(slot_i)]   = s;
+                    centers[static_cast<size_t>(slot_i)] = (kd0 + id - rd) * df;
+                    if(n_centers < want) n_centers++;
+                }
+                if(n_centers == 0) { centers[0] = kd0 * df; n_centers = 1; }
+            }
+            if(presearch)
+            {
+                pre_centers = centers;
+                pre_snap    = k_snap;
+                pre_n       = n_centers;
+                pre_grain   = youngest;
+                pre_valid   = true;
+                return;
+            }
+            r = idsp::min<int32_t>(idsp::max<int32_t>(ola_fine_reach, 1), 64);
+            W = idsp::max<int32_t>(ola_fine_window, 16);
+        }
         /* R3d: candidates are INTEGER offsets k from the previous head's own sample grid (prev.pos), so reference and
          * candidates share one rounding and the chosen lag keeps prev.frac exactly. (Truncating w_abs - lag_c here
          * biased every grain ~0.5 smp the same way: a constant ~7 c pitch offset.) */
-        const int32_t k0 = static_cast<int32_t>(std::lround(lag_nat - lag_new));   // forward distance of the snapped candidate
-        for(int32_t j = -r; j <= r; j++)
+        bool found = false;
+        float best_off = 0.f;
+        const int32_t stride = ola_coarse != 0 ? idsp::min<int32_t>(idsp::max<int32_t>(ola_fine_stride, 1), 4) : 1;
+        for(int32_t ci = 0; ci < n_centers; ci++)
         {
-            const int32_t k = k0 + j;
-            const float lag_c = lag_nat - static_cast<float>(k);
-            const size_t idx = static_cast<size_t>(j + r);
-            if(lag_c < need || lag_c > ceiling) { sc[idx] = -1.0e30f; continue; }
-            const uint32_t cand_end = prev.pos + static_cast<uint32_t>(k);
-            float num = 0.f;
-            float den = 1.0e-12f;
-            for(int32_t n = 1; n <= W; n++)
+            const int32_t k0 = centers[static_cast<size_t>(ci)];   // forward distance of the snapped/coarse candidate
+            best_i = -1;
+            float best_c = -1.0e30f;
+            for(int32_t j = -r; j <= r; j++)
             {
-                const float a = history[(ref_end  - static_cast<uint32_t>(n)) & history_mask];
-                const float b = history[(cand_end - static_cast<uint32_t>(n)) & history_mask];
-                num += a * b;
-                den += b * b;
+                const int32_t k = k0 + j;
+                const float lag_c = lag_nat - static_cast<float>(k);
+                const size_t idx = static_cast<size_t>(j + r);
+                if(lag_c < need || lag_c > ceiling) { sc[idx] = -1.0e30f; continue; }
+                const uint32_t cand_end = prev.pos + static_cast<uint32_t>(k);
+                float num = 0.f;
+                float den = 1.0e-12f;
+                for(int32_t n = 1; n <= W; n += stride)   // R3h: stride > 1 keeps the window span at a fraction of the work
+                {
+                    const float a = history[(ref_end  - static_cast<uint32_t>(n)) & history_mask];
+                    const float b = history[(cand_end - static_cast<uint32_t>(n)) & history_mask];
+                    num += a * b;
+                    den += b * b;
+                }
+                sc[idx] = num / std::sqrt(den);
+                if(sc[idx] > best_c) { best_c = sc[idx]; best_i = static_cast<int32_t>(idx); }
             }
-            sc[idx] = num / std::sqrt(den);
-            if(sc[idx] > best) { best = sc[idx]; best_i = static_cast<int32_t>(idx); }
-        }
-        if(best_i >= 0)
-        {
-            float off = static_cast<float>(k0 + best_i - r);   // R3d: absolute forward distance from prev
+            if(best_i < 0 || best_c <= best) continue;
+            best = best_c;
+            found = true;
+            best_off = static_cast<float>(k0 + best_i - r);   // R3d: absolute forward distance from prev
             if(best_i > 0 && best_i < 2 * r && sc[static_cast<size_t>(best_i - 1)] > -1.0e29f && sc[static_cast<size_t>(best_i + 1)] > -1.0e29f)
             {
                 const float a = sc[static_cast<size_t>(best_i - 1)];
                 const float b = sc[static_cast<size_t>(best_i)];
                 const float c = sc[static_cast<size_t>(best_i + 1)];
                 const float den = a - (2.f * b) + c;
-                if(den < -1.0e-9f) off += tairm::clamp(0.5f * (a - c) / den, -0.5f, 0.5f);
+                if(den < -1.0e-9f) best_off += tairm::clamp(0.5f * (a - c) / den, -0.5f, 0.5f);
             }
-            lag_new = lag_nat - off;   // R3d: exact, preserves prev.frac
+        }
+        if(found)
+        {
+            lag_new = lag_nat - best_off;   // R3d: exact, preserves prev.frac
+            ev_score = best;
         }
     }
     lag_new = tairm::clamp(lag_new, need, ceiling);
@@ -959,6 +1143,10 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min)
     g.active = true;
     g.kill = false;
     g.fade = 1.f;
+    pre_valid = false;   // R3i
+    /* debug: "<t> G <lag_new> <p_in> <valid> <len> <at_min> <score>" */
+    if(FILE* ev = events_file()) std::fprintf(ev, "%u G %.2f %.2f %d %u %d %.3f\n", w_abs - static_cast<uint32_t>(history_size), lag_new, p_in,
+                                              period_valid ? 1 : 0, len, at_min ? 1 : 0, ev_score);
 }
 
 void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& output)
@@ -990,6 +1178,24 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
         {
             onset      = true;
             onset_hold = onset_refractory;
+            /* R3n: a new note needs a period before the grains can align; the in-flight YIN frame is mostly
+             * pre-onset and a frame takes ~100 ms at 2 lags/block, so run faster until the first fresh lock. */
+            if(yin_burst > 0)
+            {
+                yin_burst_on    = true;
+                yin_burst_count = 0u;
+                burst_prev      = 0.f;   // R3o
+                burst_last      = 0.f;   // R3q
+                /* R3t: a pick after silence has no tracked period, so restarting the frame is free; an articulation
+                 * inside a sustained phrase keeps its period, and restarting there locks on the transition. */
+                if(yin_onset_restart > 0 && restart_age >= static_cast<uint32_t>(std::max(yin_restart_holdoff, 0))
+                   && !(yin_restart_untracked_only > 0 && period_valid))
+                {
+                    yin_running = false;
+                    yin_wait    = static_cast<uint32_t>(yin_onset_restart);
+                    restart_age = 0u;
+                }
+            }
         }
         onset_cur = tairm::max(onset_cur, onset_fast);
         if(onset_frame == 0u)
@@ -1004,6 +1210,7 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
         {
             output[i] = x;
             for(auto& g : grains) g.active = false;
+            pre_valid = false;   // R3i
             continue;
         }
 
@@ -1018,6 +1225,12 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
         {
             const OlaGrain& g = grains[static_cast<size_t>(k)];
             if(g.active && !g.kill && (youngest < 0 || g.age < grains[static_cast<size_t>(youngest)].age)) youngest = k;
+        }
+        if(ola_presearch > 0 && ola_coarse != 0 && youngest >= 0 && !pre_valid)   // R3i
+        {
+            const OlaGrain& gy = grains[static_cast<size_t>(youngest)];
+            const uint32_t half = gy.len / 2u;
+            if(gy.age < half && gy.age + static_cast<uint32_t>(ola_presearch) >= half) _ola_spawn(youngest, false, true);
         }
         if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / 2u)
         {
@@ -1071,6 +1284,33 @@ template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, d
     if(name == "xfade_min")            { Shift_smooth::xfade_min = v;              return true; }
     if(name == "onset_reseat")         { onset_reseat = v > 0.5f;                  return true; }
     if(name == "onset_ratio")          { onset_ratio = v;                          return true; }
+    if(name == "ola_coarse_cands")     { Shift_smooth::ola_coarse_cands = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_fine_stride")      { Shift_smooth::ola_fine_stride = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_presearch")        { Shift_smooth::ola_presearch = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_max_lag")
+    {
+        const size_t lag = std::clamp(static_cast<size_t>(std::max(v, 0.f) + 0.5f), size_t{64}, Shift_smooth::yin_max_lag_cap);
+        Shift_smooth::yin_max_lag  = lag;
+        Shift_smooth::yin_analysis = Shift_smooth::yin_window + lag;
+        Shift_smooth::max_period   = static_cast<float>(lag * Shift_smooth::dec_factor);
+        return true;
+    }
+    if(name == "yin_restart_untracked_only") { Shift_smooth::yin_restart_untracked_only = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_burst_snap")       { Shift_smooth::yin_burst_snap = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_restart_holdoff")  { Shift_smooth::yin_restart_holdoff = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_burst_confirm")    { Shift_smooth::yin_burst_confirm = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_burst")            { Shift_smooth::yin_burst = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_burst_frames")     { Shift_smooth::yin_burst_frames = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_onset_restart")    { Shift_smooth::yin_onset_restart = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_hold_frames")      { Shift_smooth::yin_hold_frames = static_cast<uint32_t>(std::max(v, 0.f) + 0.5f); return true; }
+    if(name == "yin_weak_hold")        { Shift_smooth::yin_weak_hold = v; return true; }
+    if(name == "yin_weak_tol")         { Shift_smooth::yin_weak_tol = v; return true; }
+    if(name == "yin_weak_max_lag")     { Shift_smooth::yin_weak_max_lag = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_weak_stable")      { Shift_smooth::yin_weak_stable = v; return true; }
+    if(name == "yin_weak_threshold")   { Shift_smooth::yin_weak_threshold = v; return true; }
+    if(name == "ola_coarse")           { Shift_smooth::ola_coarse = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_fine_reach")       { Shift_smooth::ola_fine_reach = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_fine_window")      { Shift_smooth::ola_fine_window = static_cast<int>(v + 0.5f); return true; }
     if(name == "ola_onsets")           { Shift_smooth::ola_onsets = static_cast<int>(v + 0.5f); return true; }
     if(name == "ola_kill_len")         { Shift_smooth::ola_kill_len = v;           return true; }
     if(name == "ola_mode")             { Shift_smooth::ola_mode = static_cast<int>(v + 0.5f); return true; }

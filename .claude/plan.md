@@ -32,11 +32,72 @@ smoothing) give at most ~2x on FM roughness, still 3-25x Archetype. R3 (continuo
 -> 6.0/4.4/0.48/0.57 c (Arch 5.8/3.5/0.46/0.24) at 3-5 ms with ola_periods=2, ola_min_len=256, ola_window=512,
 ola_reach=24. **Update:** R3c/R3d done -- alignment-bias fix removed a ~7 c offset; candidate (ola r48, onsets=1, params in
 findings.md) beats Archetype on sax FM roughness at every shift with synthetic pitch/SINAD intact.
-**Resume here:** check CPU retime + real/full regression of the candidate (results/shift-smooth/*-R3dreg), mitigate CPU
-if the NCC search overloads blocks (coarse decimated search / spread over blocks), then: synthetic regression of the OLA candidate on suites full + real vs Archetype (onset metrics:
-flam_db, attack_smear, pre_echo; poly), fold with tools/fold_variant.py (note: shift.cpp would carry both paths; strip
-the splice path later), rebuild shift_capi + ShiftListen_SyncDll, tools/smoke_plugin.py, docs/RESULTS.md, user re-listen
-(ask for chord/strum/riff real audio).
+**Resume here (2026-09-16, R3e-R3k in experiments.md):** candidate = OLA + two-stage search
+`ola_coarse=1;ola_coarse_cands=2;ola_fine_window=256` (top-2 decimated peaks refined at full rate; cpu ~90-100 % desktop
+worst block; stride/presearch cheaper variants REJECTED for quality) + weak YIN period `yin_weak_threshold=0.5`
+(deepest d' dip = OLA jump quantum when YIN fails; fixed gch_Cmaj7, which was nearly the whole real-suite gap).
+Real suite vs Archetype now 3 worse (lsd 2.09 vs 1.56, smear 1.00 vs .78, discounted env_mod_hi); quick 0 worse.
+UPDATE (R3k-R3m): candidate adds `yin_weak_stable=2;yin_weak_hold=4` (gate stops one-off weak dips wrecking sax
++12; hold keeps an established weak period through strum/decay). Sax = R3g (3.80/3.02/0/0 c); real suite vs Arch:
+fm 2.88 (3.08), poly 24.68 (23.59), ppitch 12.39 (11.74), lsd 2.12 (1.56), smear 1.00 (.78), latmax 48.0 (43.86:
+single Cmaj7 +5 case -- the 2-frame gate delays the first weak jump ~95 ms at the onset since a YIN frame takes
+~100 ms at yin_per_block=2). yin_per_block=4 fixes that timing but regresses sax +12 through the TRACKED path
+(fm 4.84; period_alpha .125 -> 3.11); `yin_hold_frames` now a runtime knob -> NEXT: rebuild (after any background
+suite frees build/bench/shiftbench.exe), test sax pb4 + alpha .125 + yin_hold_frames 12; if no clean win keep pb2.
+Then: quick + real + full regression, CPU retime (alone), fold: `tools/fold_variant.py smooth --set "<params>"`
+(fold now also freezes plain-int knobs + anonymous-namespace runtime globals, strips SHIFT_EVENTS logging/ev_score;
+staged fold syntax-checks clean with -DSample=float), then `--out .`, identity shift:current vs shift:smooth,
+rebuild shift_capi + ShiftListen_SyncDll, tools/smoke_plugin.py, docs/RESULTS.md, commit, user re-listen (ask for
+chord/strum/riff audio).
+Next quality gap after that: single-note LSD (~2.0 vs Arch ~0.9 dB).
+UPDATE (R3n, experiments.md): single-note lsd gap = ONLY the attack: grains jump by the 256 fallback until YIN's first
+lock (~+200 ms at yin_per_block=2), smearing harmonics with correct level. `yin_burst=16;yin_onset_restart=43` (abort the
+stale frame at an onset, wait 43 blocks, scan 16 lags/block until a fresh lock) locks at ~+60 ms: lsd G3 +5 3.26 -> 1.23
+(Arch 1.18), G3 -5 1.83 -> .78, A2 +5 2.20 -> 1.24, D3 +12 3.68 -> 1.69; CPU worst block unchanged (87.6 vs 90.7 %).
+BLOCKER: sax breaks (fm -12 3.80 -> 13.34, +12 0 -> 3.71); burst-only and restart-only each break +12 too, as do pb4 and
+other frame-timing changes -> the R3l sax +12 0.00 looks fragile. NEXT: time-resolve sax +12 fm per voiced run (scratch
+diag script, own render dir -- real_audio.py overwrites build/real_audio/<stem>/shift-smooth_*.wav) to find the events,
+then decide (e.g. restart only when untracked / onset-strength gate) before regression + fold.
+UPDATE 2 (R3n-real, R3o): sax metric = ONE 0.9 s voiced run (findings.md) -> not a gate. Real suite R3n (burst+restart):
+4 worse (lsd + latmax now pass; new ppitch 13.15 / jitter 6.38 from wrong locks on CHORD strum onsets). R3o adds
+`yin_burst_confirm=1;yin_burst_frames=4` (adopt a burst estimate only when the next burst frame agrees): real suite
+running (tag R3o-real) -> pick R3n vs R3o on the real suite, then quick + full regression, CPU retime (alone), fold.
+DECIDED: R3o rejected (real suite 5 worse, latmax 58.4). CANDIDATE = R3n params:
+exact_ratio=1;onset_runway=150;fallback_corr_window=256;onset_grain=768;causal_corr=1;guard_samples=24;xfade_frac=0.125;
+blind_span_cap=538;ola_mode=1;ola_periods=2;ola_min_len=256;ola_window=512;ola_reach=48;ola_kill_len=64;ola_onsets=1;
+ola_coarse=1;ola_coarse_cands=2;ola_fine_window=256;yin_weak_threshold=0.5;yin_weak_stable=2;yin_weak_hold=4;
+yin_burst=16;yin_onset_restart=43. Quick + full regression running (tags R3n-quick, R3n-full); then retime alone,
+fold `--set` those params `--out .`, identity check shift:current vs shift:smooth, rebuild shift_capi +
+ShiftListen_SyncDll, smoke_plugin.py, RESULTS.md from scratchpad draft, commit, ask user to re-listen.
+**SHIPPED 2026-09-16: R3u is in shift.hpp/shift.cpp** (re-folded over R3p after the sax regression; identity-checked
+bit-exact; CPU worst block 82.5-84.1 %). R3u = R3p minus the YIN onset burst/restart (`yin_burst=0`,
+`yin_onset_restart=0`), keeping `yin_max_lag=450`. Why: the restart mis-locks on sustained wind material -- sax fm
+-12/-7 was 32.8/19.4 c with it and 4.1/3.1 without -- while the guitar cost is small (real suite 5 worse vs 4; lsd 2.35
+vs 1.86, gnoise -37.2 vs -42.7; but latmax 37.0 vs 43.1 and ppitch 12.85 vs 13.22 are BETTER). Full suite: 1 worse
+(chord per-note pitch 9.78 vs 8.06). The burst/restart knobs stay in variants/smooth for future work: they are the only
+thing that fixed guitar ATTACK spectral distance (G3 +5 lsd 3.26 -> 1.23) and are worth revisiting with a
+wind-instrument-safe trigger.
+
+(superseded) **FOLDED 2026-09-16:** R3p is in shift.hpp/shift.cpp (identity-checked bit-exact; previous firmware backed up in
+build/firmware_backup/). Full suite vs Archetype: 1 worse (chord per-note pitch 9.45 vs 8.06 c); real suite: 4 worse
+(ppitch 13.22, jitter 6.29, smear .99, env_mod_hi discounted) with fm roughness 1.53 vs 3.08 and latency 2.66 vs 8.30 ms.
+CPU worst block 82.6-84.5 % of a 32-sample block (desktop) -- the M33 port will need a cheaper alignment search.
+docs/RESULTS.md rewritten for this build. **BLOCKED (user action):** `shift_capi.dll` rebuilt fine, but
+`ShiftListen_SyncDll` cannot copy it into `Shift Listen.vst3/Contents/x86_64-win` -- Ableton Live is running and holds
+the loaded DLL, so `tools/smoke_plugin.py` is still testing the STALE bundle (reports FAIL). With the DAW closed:
+`cmake --build build/bench --target shift_capi`, then (vcvars64) `cmake --build build/host --target ShiftListen_SyncDll`,
+then `python tools/smoke_plugin.py` (expect SMOKE TEST: PASS), then re-copy the bundle to the system VST3 folder.
+Then: ask the user to re-listen (guitar AND the sax at -12/-7) and for longer DI guitar takes (chords/strums/riffs).
+
+UPDATE 3: R3n full suite failed only ppitch 13.60 (dyad_fourth_A2: common period 1309 > YIN 1200) and quick failed
+latmax/pitch (burst frame timing). yin_max_lag is now runtime (cap 450); 450 fixes both (R3p, R3q). CANDIDATE R3p =
+R3n params + `yin_max_lag=450`. Real + full regression running (tags R3p-real, R3p-full). FOLD NOTE: yin_analysis and
+max_period are separate frozen knobs derived from yin_max_lag -- pass `yin_max_lag=450;yin_analysis=834;max_period=1800`
+together to fold_variant.py. yin_burst_snap / yin_restart_holdoff / yin_burst_confirm exist but stay 0.
+Fold dry run with all knobs: 50 knobs frozen, syntax clean. docs/RESULTS.md rewrite drafted in the session scratchpad
+(RESULTS_draft.md; <<FILL>> markers for final numbers) -- if the scratchpad is gone, rewrite from experiments.md R3-R3o.
+Scratch diagnostics (session scratchpad): diag_realsig.py (per-signal real-suite table), diag_cmaj7.py (per-note
+levels, extra params), diag_olatrace.py (G spawn events via SHIFT_EVENTS).
 
 (superseded) **STATUS 2026-09-16 late: BLOCKED ON USER INPUT.** env_mod_hi_db turned out phase-sensitive (invalid on harmonic
 content); with it discounted, no metric reproduces "audibly worse" (see findings.md). Disproved: YIN mis-tracking,

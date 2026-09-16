@@ -128,14 +128,15 @@ class Shift_smooth
          * is what makes a tracker unable to lock any chord at all. */
         static constexpr size_t yin_window   = 384;
         static constexpr size_t yin_min_lag  = 8;
-        static constexpr size_t yin_max_lag  = 300;
-        static constexpr size_t yin_analysis = yin_window + yin_max_lag;
+        static constexpr size_t yin_max_lag_cap = 450;             // R3p: array capacity for the runtime range
+        static inline size_t yin_max_lag  = 300;                   /* R3p: runtime-tunable (<= cap; set_param keeps the two below in step) */
+        static inline size_t yin_analysis = yin_window + 300;      /* R3p: runtime-tunable = yin_window + yin_max_lag */
         static inline size_t yin_per_block = 2;   /* lat: runtime-tunable */      // lags retired per block
         static constexpr float  yin_threshold = 0.30f;  // d'(tau) below this is a pitch
-        static constexpr uint32_t yin_hold_frames = 6;  // bad frames tolerated
+        static inline uint32_t yin_hold_frames = 6;     /* R3m: runtime-tunable */ // bad frames tolerated
 
         static constexpr float min_period = 32.f;   // E1: was 60, below which YIN (32 smp) still tracks
-        static constexpr float max_period = static_cast<float>(yin_max_lag * 4);
+        static inline float max_period = 1200.f;   /* R3p: runtime-tunable = yin_max_lag * dec_factor */
 
         /* The similarity window is centred on the head, so half of it is also
          * the latency floor -- every sample of reach past the head is a sample
@@ -171,6 +172,24 @@ class Shift_smooth
         static inline int   ola_reach = 8;              /* fine alignment half-width when tracked */
         static inline int   ola_window = 128;           /* causal NCC window (input samples) */
         static inline float ola_fallback_period = 256.f;/* jump quantum when untracked */
+        static inline int   ola_coarse = 0;             /* R3e: 1 = decimated coarse + full-rate fine alignment */
+        static inline int   ola_coarse_cands = 1;       /* R3f: coarse local maxima refined at full rate (1..4) */
+        static inline int   ola_fine_stride = 1;        /* R3h: fine NCC sum stride (1..4), coarse mode only */
+        static inline int   yin_burst = 0;              /* R3n: YIN lags per block from an onset until a fresh lock (0 = off) */
+        static inline int   yin_burst_frames = 2;       /* R3n: max YIN frames a burst lasts */
+        static inline int   yin_onset_restart = 0;      /* R3n: abort the stale YIN frame at an onset and wait this many blocks before the fresh snapshot (0 = off) */
+        static inline int   yin_restart_untracked_only = 0;   /* R3t: 1 = only restart the YIN frame at an onset when no period is currently tracked */
+        static inline int   yin_burst_snap = 0;         /* R3q: 1 = during a burst adopt estimates directly (no glide) until two agree within 1 % */
+        static inline int   yin_restart_holdoff = 0;    /* R3q: blocks after a restart in which further onsets don't restart (strums) */
+        static inline int   yin_burst_confirm = 0;      /* R3o: 1 = a burst estimate is adopted only when the next burst frame agrees (period_jump) */
+        static inline int   yin_weak_max_lag = 0;       /* R3r: cap (decimated lags) on the weak deepest-dip search; 0 = yin_max_lag */
+        static inline float yin_weak_hold = 0.f;        /* R3l: frames an active weak period survives misses/disagreements */
+        static inline float yin_weak_tol = 0.06f;       /* R3l: relative agreement tolerance between weak frames */
+        static inline float yin_weak_stable = 0.f;      /* R3k: consecutive agreeing weak frames required (0/1 = none) */
+        static inline float yin_weak_threshold = 0.f;   /* R3j: deepest-dip OLA jump quantum when YIN fails (0 = off) */
+        static inline int   ola_presearch = 0;          /* R3i: run the coarse search this many samples early (0 = at spawn) */
+        static inline int   ola_fine_reach = 3;         /* R3e: full-rate half-width around the coarse result */
+        static inline int   ola_fine_window = 128;      /* R3e: full-rate NCC window */
         static inline int   ola_onsets = 0;             /* R3c: onsets retire grains + restart at minimum lag */
         static inline float ola_kill_len = 64.f;        /* R3c: fade-out of retired grains (output samples) */
         static inline float corr_preemph = 0.f;       /* smooth: fine-correlation pre-emphasis a (x[n]-a*x[n-1]); weights the
@@ -215,7 +234,7 @@ class Shift_smooth
         float   _splice_fine(uint32_t ref, int32_t sign, int32_t best_dd) const;
         float   _ncc_frac(uint32_t rbase, double dist, int32_t sign, int32_t w) const;   // smooth
         void    _process_ola(const MonoDspBuffer& input, MonoDspBuffer& output);          // R3
-        void    _ola_spawn(int youngest, bool at_min = false);                            // R3 (+R3c at_min)
+        void    _ola_spawn(int youngest, bool at_min = false, bool presearch = false);                            // R3 (+R3c at_min)
         void    _start_fade(float target_lag, float length, bool match_level = false);
 
         /* ratio is at most 2, so the carry never runs more than twice. */
@@ -280,8 +299,8 @@ class Shift_smooth
         float    lag_hi{0.f};
 
         // ---- pitch -------------------------------------------------------
-        std::array<float, yin_analysis>    yin_snap{};
-        std::array<float, yin_max_lag + 1> yin_d{};
+        std::array<float, yin_window + yin_max_lag_cap> yin_snap{};   // R3p: sized for the largest range
+        std::array<float, yin_max_lag_cap + 1>          yin_d{};
         size_t   yin_cursor{0};
         bool     yin_running{false};
         float    period{default_grain};
@@ -301,6 +320,22 @@ class Shift_smooth
             float    fade{1.f};      // R3c
         };
         std::array<OlaGrain, 4> grains{};   // R3
+        float                   weak_period{256.f};   // R3j
+        bool                    weak_valid{false};    // R3j
+        float                   weak_cand{0.f};       // R3k
+        uint32_t                weak_agree{0u};       // R3k
+        uint32_t                weak_hold_left{0u};   // R3l
+        bool                    yin_burst_on{false};  // R3n
+        uint32_t                yin_burst_count{0u};  // R3n: frames finalised since the burst started
+        uint32_t                yin_wait{0u};         // R3n: blocks left before the post-onset YIN snapshot
+        float                   burst_prev{0.f};      // R3o: previous unconfirmed burst estimate (0 = none)
+        float                   burst_last{0.f};      // R3q: period after the previous burst frame (0 = none)
+        uint32_t                restart_age{100000u}; // R3q: blocks since the last onset restart
+        std::array<int32_t, 4>  pre_centers{};   // R3i: coarse centres (offsets from the youngest grain's pos)
+        int32_t                 pre_n{0};
+        int32_t                 pre_snap{0};         // R3i: period snap (k) at presearch time
+        int                     pre_grain{-1};
+        bool                    pre_valid{false};
 
         // ---- onset -------------------------------------------------------
         float    onset_lp{0.f};

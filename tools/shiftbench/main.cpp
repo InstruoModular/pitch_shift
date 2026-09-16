@@ -112,13 +112,15 @@ int main(int argc, char** argv)
         if(!wav::write(job.out, out, static_cast<uint32_t>(sample_rate)))
         { std::cerr << "cannot write " << job.out << "\n"; failures++; continue; }
 
-        char meta[512];
-        std::snprintf(meta, sizeof meta,
+        /* The params list grows with every knob, so only the fixed-size head goes through snprintf. */
+        char head[256];
+        std::snprintf(head, sizeof head,
                       "{\"reported_latency\": null, \"block\": %zu, \"sr\": %d, \"variant\": %s, "
-                      "\"cpu_ns_per_sample\": %.2f, \"cpu_worst_block_pct\": %.3f, \"params\": {%s}}\n",
+                      "\"cpu_ns_per_sample\": %.2f, \"cpu_worst_block_pct\": %.3f, \"params\": {",
                       B, static_cast<int>(sample_rate), manifest::json_str(variant).c_str(),
-                      ns_sum / static_cast<double>(blocks * B), 100.0 * ns_worst / block_period_ns, applied.c_str());
-        if(FILE* f = std::fopen((job.out + ".json").c_str(), "wb")) { std::fputs(meta, f); std::fclose(f); }
+                      ns_sum / static_cast<double>(blocks * B), 100.0 * ns_worst / block_period_ns);
+        const std::string meta = std::string(head) + applied + "}}\n";
+        if(FILE* f = std::fopen((job.out + ".json").c_str(), "wb")) { std::fputs(meta.c_str(), f); std::fclose(f); }
     }
 
     std::cerr << "shiftbench: " << (jobs.size() - static_cast<size_t>(failures)) << "/" << jobs.size() << " jobs ok\n";
