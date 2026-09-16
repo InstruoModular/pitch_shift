@@ -1,0 +1,27 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      1.94      6.88    +4.94  ok
+lat_ms_max                 35.50     45.15    +9.65  ok
+lat_jitter_ms               6.13      6.00    -0.13  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.78      8.06    -1.72  XX
+sinad_poly_db              31.67     26.58    +5.09  ok
+hf_junk_db               -111.07    -83.83   +27.24  ok
+lsd_db                      3.35      2.89    -0.46  ok
+pre_echo_db               -44.03    -49.41    -5.38  XX
+flam_db                     1.89      3.24    +1.35  ok
+attack_smear                1.26      1.05    -0.21  XX
+disc_db                     0.25      1.26    +1.01  ok
+fm_rough_cents              3.32         -           .
+am_rough_db                 0.51         -           .
+env_mod_db                  0.55         -           .
+env_mod_note_db             0.70         -           .
+env_mod_hi_db               0.55         -           .
+grain_noise_p90_db        -43.24         -           .
+level_db                    0.27      0.08    -0.19  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         455.06         -           .
+cpu_worst_block_pct       103.69         -           .
+-- 3 metric(s) worse than ref beyond tolerance
+
+run: results\shift-smooth\20260916-075357-poly-POLYBASE  jobs=72  render 0s  process 12s  measure 78s

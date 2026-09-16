@@ -1,0 +1,63 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=0]  (104 cases)
+metric                      cand
+lat_ms                      4.08
+lat_ms_max                 42.28
+lat_jitter_ms               6.05
+pitch_err_cents             6.63
+pitch_err_p95_cents         9.36
+if_dev_cents                9.70
+poly_pitch_err_cents       19.35
+sinad_db                   32.44
+sinad_poly_db              21.07
+subharm_db                -69.18
+hf_junk_db               -116.80
+am_pp_db                    0.11
+am_rate_hz                 44.88
+lsd_db                      2.80
+pre_echo_db              -139.55
+flam_db                     1.47
+attack_smear                0.91
+disc_db                     0.17
+fm_rough_cents              5.91
+am_rough_db                 0.38
+env_mod_db                  0.44
+env_mod_note_db             0.53
+env_mod_hi_db               0.64
+grain_noise_p90_db        -41.01
+level_db                    0.34
+nonfinite                   0.00
+cpu_ns_per_sample        1082.89
+cpu_worst_block_pct       866.25
+
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1]  (104 cases)
+metric                      cand
+lat_ms                      2.69
+lat_ms_max                 39.22
+lat_jitter_ms               6.32
+pitch_err_cents             6.60
+pitch_err_p95_cents         9.37
+if_dev_cents                9.73
+poly_pitch_err_cents       17.94
+sinad_db                   32.66
+sinad_poly_db              21.27
+subharm_db                -69.11
+hf_junk_db               -116.91
+am_pp_db                    0.11
+am_rate_hz                 35.16
+lsd_db                      2.84
+pre_echo_db              -145.15
+flam_db                     1.40
+attack_smear                0.96
+disc_db                     0.07
+fm_rough_cents              5.90
+am_rough_db                 0.38
+env_mod_db                  0.45
+env_mod_note_db             0.53
+env_mod_hi_db               0.65
+grain_noise_p90_db        -41.03
+level_db                    0.32
+nonfinite                   0.00
+cpu_ns_per_sample        1072.97
+cpu_worst_block_pct       850.18
+
+run: results\shift-smooth\20260915-221302-real-R3reg  jobs=208  render 0s  process 108s  measure 97s

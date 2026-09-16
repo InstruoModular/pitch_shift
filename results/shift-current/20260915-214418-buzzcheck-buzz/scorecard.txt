@@ -1,0 +1,29 @@
+== shift:current [default]  (20 cases)
+metric                      cand
+lat_ms                      3.02
+lat_ms_max                  4.70
+pitch_err_cents             0.84
+pitch_err_p95_cents         1.53
+if_dev_cents                1.55
+sinad_db                   65.01
+subharm_db                -77.86
+hf_junk_db               -119.75
+am_pp_db                    0.07
+am_rate_hz                 27.59
+lsd_db                      1.07
+pre_echo_db              -214.94
+flam_db                     0.74
+attack_smear                0.54
+disc_db                     0.12
+fm_rough_cents              0.62
+am_rough_db                 0.08
+env_mod_db                  0.56
+env_mod_note_db             0.48
+env_mod_hi_db               1.26
+grain_noise_p90_db        -72.21
+level_db                    0.19
+nonfinite                   0.00
+cpu_ns_per_sample         259.09
+cpu_worst_block_pct        28.14
+
+run: results\shift-current\20260915-214418-buzzcheck-buzz  jobs=20  render 0s  process 2s  measure 15s

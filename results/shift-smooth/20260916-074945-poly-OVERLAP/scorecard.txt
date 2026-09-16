@@ -1,0 +1,53 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450,ola_periods=3]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      2.11      6.88    +4.77  ok
+lat_ms_max                 30.70     45.15   +14.45  ok
+lat_jitter_ms               5.31      6.00    +0.69  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.31      8.06    -1.24  XX
+sinad_poly_db              32.32     26.58    +5.74  ok
+hf_junk_db               -112.05    -83.83   +28.22  ok
+lsd_db                      3.24      2.89    -0.35  ok
+pre_echo_db               -52.64    -49.41    +3.23  ok
+flam_db                     1.83      3.24    +1.41  ok
+attack_smear                1.26      1.05    -0.21  XX
+disc_db                     0.34      1.26    +0.91  ok
+fm_rough_cents              3.13         -           .
+am_rough_db                 0.52         -           .
+env_mod_db                  0.53         -           .
+env_mod_note_db             0.66         -           .
+env_mod_hi_db               0.54         -           .
+grain_noise_p90_db        -43.62         -           .
+level_db                    0.32      0.08    -0.24  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         416.48         -           .
+cpu_worst_block_pct       107.00         -           .
+-- 2 metric(s) worse than ref beyond tolerance
+
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450,ola_periods=4]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      2.80      6.88    +4.09  ok
+lat_ms_max                 30.70     45.15   +14.45  ok
+lat_jitter_ms               5.15      6.00    +0.86  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.28      8.06    -1.21  XX
+sinad_poly_db              32.52     26.58    +5.94  ok
+hf_junk_db               -112.75    -83.83   +28.92  ok
+lsd_db                      3.08      2.89    -0.20  ok
+pre_echo_db               -51.61    -49.41    +2.20  ok
+flam_db                     1.85      3.24    +1.38  ok
+attack_smear                1.29      1.05    -0.24  XX
+disc_db                     0.32      1.26    +0.94  ok
+fm_rough_cents              3.27         -           .
+am_rough_db                 0.53         -           .
+env_mod_db                  0.53         -           .
+env_mod_note_db             0.62         -           .
+env_mod_hi_db               0.54         -           .
+grain_noise_p90_db        -43.82         -           .
+level_db                    0.33      0.08    -0.24  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         424.24         -           .
+cpu_worst_block_pct       133.68         -           .
+-- 2 metric(s) worse than ref beyond tolerance
+
+run: results\shift-smooth\20260916-074945-poly-OVERLAP  jobs=144  render 0s  process 23s  measure 163s

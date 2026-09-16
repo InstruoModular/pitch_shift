@@ -1,8 +1,22 @@
+# Build trees and caches
 build/
-results/**/*.wav
-results/**/plots/
+.vs/
 __pycache__/
 *.pyc
-.vs/
-"Archetype Misha Mansoor X.dll"
+
+# Plugins: third-party binaries and our own compiled bundles
+*.vst3
+*.dll
+*.exe
+*.lib
+*.obj
+*.pdb
+Archetype Misha Mansoor X.dll
 BL-PitchShift.vst3
+Shift Listen.vst3/
+
+# Harness output: keep metrics.json / scorecard.txt / jobs*.tsv,
+# drop rendered audio, per-render metadata and plots
+results/**/*.wav
+results/**/wav/
+results/**/plots/

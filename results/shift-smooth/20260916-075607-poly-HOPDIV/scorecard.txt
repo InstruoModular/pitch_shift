@@ -1,0 +1,53 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450,ola_hop_div=3]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      2.25      6.88    +4.63  ok
+lat_ms_max                 35.73     45.15    +9.43  ok
+lat_jitter_ms               6.25      6.00    -0.24  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents       10.74      8.06    -2.67  XX
+sinad_poly_db              31.81     26.58    +5.22  ok
+hf_junk_db               -111.46    -83.83   +27.63  ok
+lsd_db                      3.29      2.89    -0.40  ok
+pre_echo_db               -47.48    -49.41    -1.93  ok
+flam_db                     2.11      3.24    +1.12  ok
+attack_smear                1.24      1.05    -0.19  ok
+disc_db                     0.41      1.26    +0.85  ok
+fm_rough_cents              2.64         -           .
+am_rough_db                 0.48         -           .
+env_mod_db                  0.56         -           .
+env_mod_note_db             0.81         -           .
+env_mod_hi_db               0.57         -           .
+grain_noise_p90_db        -44.24         -           .
+level_db                    0.52      0.08    -0.44  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         573.90         -           .
+cpu_worst_block_pct       105.72         -           .
+-- 1 metric(s) worse than ref beyond tolerance
+
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450,ola_hop_div=4]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      2.01      6.88    +4.87  ok
+lat_ms_max                 47.30     45.15    -2.15  XX
+lat_jitter_ms               6.55      6.00    -0.55  XX
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.06      8.06    -1.00  ok
+sinad_poly_db              32.23     26.58    +5.65  ok
+hf_junk_db               -112.27    -83.83   +28.44  ok
+lsd_db                      3.31      2.89    -0.43  ok
+pre_echo_db               -46.49    -49.41    -2.92  XX
+flam_db                     2.17      3.24    +1.07  ok
+attack_smear                1.16      1.05    -0.12  ok
+disc_db                     0.40      1.26    +0.85  ok
+fm_rough_cents              2.80         -           .
+am_rough_db                 0.46         -           .
+env_mod_db                  0.54         -           .
+env_mod_note_db             0.91         -           .
+env_mod_hi_db               0.60         -           .
+grain_noise_p90_db        -44.74         -           .
+level_db                    0.62      0.08    -0.54  XX
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         686.18         -           .
+cpu_worst_block_pct       100.36         -           .
+-- 4 metric(s) worse than ref beyond tolerance
+
+run: results\shift-smooth\20260916-075607-poly-HOPDIV  jobs=144  render 0s  process 36s  measure 153s

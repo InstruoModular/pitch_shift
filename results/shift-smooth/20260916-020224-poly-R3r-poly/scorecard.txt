@@ -1,0 +1,79 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_burst=16,yin_onset_restart=43,yin_max_lag=450,yin_weak_max_lag=0]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      1.94      6.88    +4.94  ok
+lat_ms_max                 35.00     45.15   +10.15  ok
+lat_jitter_ms               5.89      6.00    +0.11  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.45      8.06    -1.39  XX
+sinad_poly_db              32.10     26.58    +5.52  ok
+hf_junk_db               -111.27    -83.83   +27.44  ok
+lsd_db                      3.44      2.89    -0.55  XX
+pre_echo_db               -45.02    -49.41    -4.39  XX
+flam_db                     1.84      3.24    +1.40  ok
+attack_smear                1.25      1.05    -0.20  XX
+disc_db                     0.21      1.26    +1.05  ok
+fm_rough_cents              4.23         -           .
+am_rough_db                 0.58         -           .
+env_mod_db                  0.58         -           .
+env_mod_note_db             0.72         -           .
+env_mod_hi_db               0.55         -           .
+grain_noise_p90_db        -39.12         -           .
+level_db                    0.30      0.08    -0.22  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         464.74         -           .
+cpu_worst_block_pct       294.17         -           .
+-- 4 metric(s) worse than ref beyond tolerance
+
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_burst=16,yin_onset_restart=43,yin_max_lag=450,yin_weak_max_lag=300]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      1.94      6.88    +4.94  ok
+lat_ms_max                 35.00     45.15   +10.15  ok
+lat_jitter_ms               5.89      6.00    +0.11  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.45      8.06    -1.39  XX
+sinad_poly_db              32.10     26.58    +5.52  ok
+hf_junk_db               -111.27    -83.83   +27.44  ok
+lsd_db                      3.44      2.89    -0.55  XX
+pre_echo_db               -45.02    -49.41    -4.39  XX
+flam_db                     1.84      3.24    +1.40  ok
+attack_smear                1.25      1.05    -0.20  XX
+disc_db                     0.21      1.26    +1.05  ok
+fm_rough_cents              4.23         -           .
+am_rough_db                 0.58         -           .
+env_mod_db                  0.58         -           .
+env_mod_note_db             0.72         -           .
+env_mod_hi_db               0.55         -           .
+grain_noise_p90_db        -39.12         -           .
+level_db                    0.30      0.08    -0.22  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         440.63         -           .
+cpu_worst_block_pct       102.12         -           .
+-- 4 metric(s) worse than ref beyond tolerance
+
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_burst=16,yin_onset_restart=43,yin_max_lag=450,yin_weak_max_lag=350]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      1.94      6.88    +4.94  ok
+lat_ms_max                 35.00     45.15   +10.15  ok
+lat_jitter_ms               5.89      6.00    +0.11  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.45      8.06    -1.39  XX
+sinad_poly_db              32.10     26.58    +5.52  ok
+hf_junk_db               -111.27    -83.83   +27.44  ok
+lsd_db                      3.44      2.89    -0.55  XX
+pre_echo_db               -45.02    -49.41    -4.39  XX
+flam_db                     1.84      3.24    +1.40  ok
+attack_smear                1.25      1.05    -0.20  XX
+disc_db                     0.21      1.26    +1.05  ok
+fm_rough_cents              4.23         -           .
+am_rough_db                 0.58         -           .
+env_mod_db                  0.58         -           .
+env_mod_note_db             0.72         -           .
+env_mod_hi_db               0.55         -           .
+grain_noise_p90_db        -39.12         -           .
+level_db                    0.30      0.08    -0.22  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         461.29         -           .
+cpu_worst_block_pct       112.20         -           .
+-- 4 metric(s) worse than ref beyond tolerance
+
+run: results\shift-smooth\20260916-020224-poly-R3r-poly  jobs=216  render 0s  process 40s  measure 252s

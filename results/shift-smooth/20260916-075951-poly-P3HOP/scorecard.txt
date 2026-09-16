@@ -1,0 +1,53 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=3,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450,ola_hop_div=3]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      2.45      6.88    +4.44  ok
+lat_ms_max                 39.34     45.15    +5.81  ok
+lat_jitter_ms               5.77      6.00    +0.23  ok
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        9.16      8.06    -1.10  XX
+sinad_poly_db              32.13     26.58    +5.54  ok
+hf_junk_db               -112.57    -83.83   +28.74  ok
+lsd_db                      3.11      2.89    -0.22  ok
+pre_echo_db               -47.67    -49.41    -1.74  ok
+flam_db                     2.23      3.24    +1.00  ok
+attack_smear                1.28      1.05    -0.23  XX
+disc_db                     0.43      1.26    +0.83  ok
+fm_rough_cents              2.86         -           .
+am_rough_db                 0.49         -           .
+env_mod_db                  0.55         -           .
+env_mod_note_db             0.79         -           .
+env_mod_hi_db               0.55         -           .
+grain_noise_p90_db        -44.80         -           .
+level_db                    0.64      0.08    -0.55  XX
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         514.56         -           .
+cpu_worst_block_pct       106.56         -           .
+-- 3 metric(s) worse than ref beyond tolerance
+
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=3,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450,ola_hop_div=4]  (72 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      3.19      6.88    +3.70  ok
+lat_ms_max                 47.30     45.15    -2.15  XX
+lat_jitter_ms               7.67      6.00    -1.67  XX
+lat_reported_ms                -      1.75           .
+poly_pitch_err_cents        8.99      8.06    -0.92  ok
+sinad_poly_db              32.43     26.58    +5.84  ok
+hf_junk_db               -112.75    -83.83   +28.92  ok
+lsd_db                      3.13      2.89    -0.24  ok
+pre_echo_db               -40.28    -49.41    -9.13  XX
+flam_db                     2.01      3.24    +1.23  ok
+attack_smear                1.23      1.05    -0.18  ok
+disc_db                     0.40      1.26    +0.86  ok
+fm_rough_cents              2.70         -           .
+am_rough_db                 0.45         -           .
+env_mod_db                  0.54         -           .
+env_mod_note_db             0.91         -           .
+env_mod_hi_db               0.55         -           .
+grain_noise_p90_db        -45.12         -           .
+level_db                    0.78      0.08    -0.70  XX
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         655.54         -           .
+cpu_worst_block_pct       117.11         -           .
+-- 4 metric(s) worse than ref beyond tolerance
+
+run: results\shift-smooth\20260916-075951-poly-P3HOP  jobs=144  render 0s  process 35s  measure 195s

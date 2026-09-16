@@ -1,0 +1,32 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1]  (104 cases)
+metric                      cand
+lat_ms                      2.66
+lat_ms_max                 29.57
+lat_jitter_ms               5.56
+pitch_err_cents             1.48
+pitch_err_p95_cents         3.26
+if_dev_cents                3.74
+poly_pitch_err_cents       16.48
+sinad_db                   51.70
+sinad_poly_db              20.67
+subharm_db                -77.33
+hf_junk_db               -117.55
+am_pp_db                    0.10
+am_rate_hz                 36.93
+lsd_db                      2.30
+pre_echo_db              -135.99
+flam_db                     1.38
+attack_smear                0.96
+disc_db                     0.10
+fm_rough_cents              5.26
+am_rough_db                 0.40
+env_mod_db                  0.45
+env_mod_note_db             0.53
+env_mod_hi_db               0.64
+grain_noise_p90_db        -45.38
+level_db                    0.33
+nonfinite                   0.00
+cpu_ns_per_sample         421.19
+cpu_worst_block_pct        74.20
+
+run: results\shift-smooth\20260915-223330-real-R3ereal  jobs=104  render 0s  process 20s  measure 110s

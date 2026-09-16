@@ -1,0 +1,32 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,corr_preemph=0.95,fine_reach_min=16]  (104 cases)
+metric                      cand
+lat_ms                      4.31
+lat_ms_max                 34.13
+lat_jitter_ms               5.72
+pitch_err_cents             1.50
+pitch_err_p95_cents         3.18
+if_dev_cents                3.27
+poly_pitch_err_cents       11.57
+sinad_db                   61.60
+sinad_poly_db              23.84
+subharm_db                -88.03
+hf_junk_db               -117.48
+am_pp_db                    0.11
+am_rate_hz                  1.08
+lsd_db                      1.41
+pre_echo_db              -137.57
+flam_db                     1.27
+attack_smear                0.88
+disc_db                     0.08
+fm_rough_cents              3.14
+am_rough_db                 0.32
+env_mod_db                  0.37
+env_mod_note_db             0.34
+env_mod_hi_db               0.59
+grain_noise_p90_db        -51.24
+level_db                    0.14
+nonfinite                   0.00
+cpu_ns_per_sample         266.03
+cpu_worst_block_pct        54.18
+
+run: results\shift-smooth\20260915-214139-real-E20d  jobs=104  render 0s  process 13s  measure 100s

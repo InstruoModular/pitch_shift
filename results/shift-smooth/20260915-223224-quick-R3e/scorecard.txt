@@ -1,0 +1,33 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=2,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1]  (40 cases)
+metric                      cand
+lat_ms                      3.08
+lat_ms_max                 19.69
+lat_jitter_ms               2.39
+pitch_err_cents             0.07
+pitch_err_p95_cents         0.13
+if_dev_cents                0.50
+track_err_cents             0.76
+poly_pitch_err_cents        3.79
+sinad_db                   62.75
+sinad_poly_db              38.32
+subharm_db                -88.49
+hf_junk_db               -106.79
+am_pp_db                    0.04
+am_rate_hz                 34.34
+lsd_db                      2.54
+pre_echo_db              -125.63
+flam_db                     1.11
+attack_smear                1.17
+disc_db                    -0.07
+fm_rough_cents              0.42
+am_rough_db                 0.11
+env_mod_db                  0.25
+env_mod_note_db             0.56
+env_mod_hi_db               0.40
+grain_noise_p90_db        -65.20
+level_db                    0.21
+nonfinite                   0.00
+cpu_ns_per_sample         541.37
+cpu_worst_block_pct        72.84
+
+run: results\shift-smooth\20260915-223224-quick-R3e  jobs=40  render 0s  process 7s  measure 22s
