@@ -82,12 +82,28 @@ wind-instrument-safe trigger.
 build/firmware_backup/). Full suite vs Archetype: 1 worse (chord per-note pitch 9.45 vs 8.06 c); real suite: 4 worse
 (ppitch 13.22, jitter 6.29, smear .99, env_mod_hi discounted) with fm roughness 1.53 vs 3.08 and latency 2.66 vs 8.30 ms.
 CPU worst block 82.6-84.5 % of a 32-sample block (desktop) -- the M33 port will need a cheaper alignment search.
-docs/RESULTS.md rewritten for this build. **BLOCKED (user action):** `shift_capi.dll` rebuilt fine, but
-`ShiftListen_SyncDll` cannot copy it into `Shift Listen.vst3/Contents/x86_64-win` -- Ableton Live is running and holds
-the loaded DLL, so `tools/smoke_plugin.py` is still testing the STALE bundle (reports FAIL). With the DAW closed:
-`cmake --build build/bench --target shift_capi`, then (vcvars64) `cmake --build build/host --target ShiftListen_SyncDll`,
-then `python tools/smoke_plugin.py` (expect SMOKE TEST: PASS), then re-copy the bundle to the system VST3 folder.
-Then: ask the user to re-listen (guitar AND the sax at -12/-7) and for longer DI guitar takes (chords/strums/riffs).
+docs/RESULTS.md rewritten for this build. Shift Listen rebuilt with the DAW closed: **smoke test PASS** (bit-exact at
+the 32-sample reported latency). The user still needs to re-copy the bundle to C:\Program Files\Common Files\VST3.
+Committed on branch `ola-engine` (885dacc, branched from main).
+**SHIPPED UPDATE 2026-09-16 (P3):** `ola_periods=3` folded on top of R3u (identity bit-exact, plugin smoke PASS,
+CPU worst block 80.3-82.0 %). Full suite: 1 worse (ppitch 9.31 vs 8.06); latmax 30.70, jitter 2.58, pitch .02,
+lsd 2.53 (beats Arch 2.64), flam 1.42, smear .96, fm 1.12. Real suite: 5 worse, lsd 2.14, gnoise -38.68 (beats Arch),
+lat 3.46/35.00. Sax 4.56/2.63/0/0. docs/RESULTS.md updated.
+
+**ANSWERED (user, 2026-09-16): how to close chord per-note pitch (now 9.31 vs Arch 8.06)?** All of it is Cmaj7 and the
+min2 dyad -- no common period in ET, so any single jump quantum is wrong for some note. MEASURED: forcing the long
+"common period" quantum is worse (42.1 vs 34.2 c); deep overlap (hop=len/4) buys ~7 c on Cmaj7 but breaks latmax
+(47.3 vs Arch 45.2) and flams; 3-period grains were the one clean win (adopted). Multi-band REJECTED (harmonics
+interleave, per-band alignment = phasiness, crossover latency). Best remaining option: a phase-vocoder path used only
+in the untracked state, crossfaded (+~21 ms on that path only).
+(superseded) **OPEN QUESTION (user, 2026-09-16): how to close chord per-note pitch (9.78 vs Arch 8.06)?** All of it is Cmaj7 (35.9
+vs 21.8) and the min2 dyad (19.8 vs 16.8): a maj7 (15:8) and a min2 (16:15) have no common period in ET, so a
+period-jumping engine cannot be phase-coherent for every note, and the error scales with the number of jumps (5.9 c at
+-1, 89 c at -7). Options ranked: (1) pick the jump lag by long-range full-band NCC instead of multiples of one tracked
+period, cached per note; (2) more overlap (ola_periods 3-4); (3) a phase-vocoder path used ONLY in the untracked state
+and crossfaded (bin-exact ratio -> per-note error ~0; +~21 ms on that path only, still under Arch's 43.9 ms worst case).
+Multi-band judged NOT the answer: no filterbank separates Cmaj7's interleaved harmonics, splitting one note's
+harmonics across bands reintroduces phasiness, and steep low crossovers cost the latency lead.
 
 UPDATE 3: R3n full suite failed only ppitch 13.60 (dyad_fourth_A2: common period 1309 > YIN 1200) and quick failed
 latmax/pitch (burst frame timing). yin_max_lag is now runtime (cap 450); 450 fixes both (R3p, R3q). CANDIDATE R3p =

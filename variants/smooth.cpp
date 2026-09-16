@@ -1232,7 +1232,8 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
             const uint32_t half = gy.len / 2u;
             if(gy.age < half && gy.age + static_cast<uint32_t>(ola_presearch) >= half) _ola_spawn(youngest, false, true);
         }
-        if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / 2u)
+        const uint32_t hop_div = static_cast<uint32_t>(idsp::min<int>(idsp::max<int>(ola_hop_div, 2), 4));   // R4
+        if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / hop_div)
         {
             _ola_spawn(youngest);
         }
@@ -1314,6 +1315,7 @@ template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, d
     if(name == "ola_onsets")           { Shift_smooth::ola_onsets = static_cast<int>(v + 0.5f); return true; }
     if(name == "ola_kill_len")         { Shift_smooth::ola_kill_len = v;           return true; }
     if(name == "ola_mode")             { Shift_smooth::ola_mode = static_cast<int>(v + 0.5f); return true; }
+    if(name == "ola_hop_div")          { Shift_smooth::ola_hop_div = static_cast<int>(v + 0.5f); return true; }
     if(name == "ola_periods")          { Shift_smooth::ola_periods = v;            return true; }
     if(name == "ola_min_len")          { Shift_smooth::ola_min_len = v;            return true; }
     if(name == "ola_max_len")          { Shift_smooth::ola_max_len = v;            return true; }

@@ -1210,7 +1210,8 @@ void Shift::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& output)
             const uint32_t half = gy.len / 2u;
             if(gy.age < half && gy.age + static_cast<uint32_t>(ola_presearch) >= half) _ola_spawn(youngest, false, true);
         }
-        if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / 2u)
+        const uint32_t hop_div = static_cast<uint32_t>(idsp::min<int>(idsp::max<int>(ola_hop_div, 2), 4));   // R4
+        if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / hop_div)
         {
             _ola_spawn(youngest);
         }

@@ -164,7 +164,8 @@ class Shift
          * jumped by whole periods to hold a target lag, then causally NCC-aligned. Mismatches blend over a
          * grain instead of being switched at a splice. */
         static constexpr int   ola_mode = 1;
-        static constexpr float ola_periods = 2.0f;          /* grain length in (output) periods */
+        static constexpr float ola_periods = 3.0f;          /* grain length in (output) periods */
+        static constexpr int   ola_hop_div = 2;            /* R4: grains per hop -- 2 = 50 % overlap, 3/4 = more grains averaged */
         static constexpr float ola_min_len = 256.0f;        /* output samples */
         static constexpr float ola_max_len = 1024.0f;       /* output samples */
         static constexpr float ola_lag_extra = 0.0f;        /* extra target lag (input samples) */

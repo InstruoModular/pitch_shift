@@ -166,6 +166,7 @@ class Shift_smooth
          * grain instead of being switched at a splice. */
         static inline int   ola_mode = 0;
         static inline float ola_periods = 2.f;          /* grain length in (output) periods */
+        static inline int   ola_hop_div = 2;            /* R4: grains per hop -- 2 = 50 % overlap, 3/4 = more grains averaged */
         static inline float ola_min_len = 256.f;        /* output samples */
         static inline float ola_max_len = 1024.f;       /* output samples */
         static inline float ola_lag_extra = 0.f;        /* extra target lag (input samples) */
