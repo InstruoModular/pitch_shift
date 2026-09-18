@@ -1,0 +1,35 @@
+== shift:smooth [exact_ratio=1,onset_runway=150,fallback_corr_window=256,onset_grain=768,causal_corr=1,guard_samples=24,xfade_frac=0.125,blind_span_cap=538,ola_mode=1,ola_periods=3,ola_min_len=256,ola_window=512,ola_reach=48,ola_kill_len=64,ola_onsets=1,ola_coarse=1,ola_coarse_cands=2,ola_fine_window=256,yin_weak_threshold=0.5,yin_weak_stable=2,yin_weak_hold=4,yin_max_lag=450,yin_octave_tol=0.85]  (32 cases)  vs vst:Archetype Misha Mansoor X:Input Gain=0.5,Output Gain=0.5,Gate Active=0,Doubler Active=0,Special FX Section Active=0,Pre FX Section Active=0,Amp Section Active=0,Cab Section Active=0,EQ Section Active=0,Post FX Section Active=0
+metric                      cand       ref   delta+  ok
+lat_ms                      3.34      8.78    +5.44  ok
+lat_ms_max                 22.30     37.37   +15.06  ok
+lat_jitter_ms               3.14      5.76    +2.62  ok
+lat_reported_ms                -      1.75           .
+pitch_err_cents             0.01      0.59    +0.58  ok
+pitch_err_p95_cents         0.04      0.82    +0.78  ok
+if_dev_cents                0.34      2.72    +2.38  ok
+track_err_cents             1.82      4.84    +3.02  ok
+poly_pitch_err_cents        7.14      6.68    -0.46  ok
+sinad_db                   64.24     42.18   +22.06  ok
+sinad_poly_db              30.31     29.61    +0.70  ok
+subharm_db                -89.69    -70.88   +18.81  ok
+hf_junk_db               -108.89    -87.69   +21.20  ok
+am_pp_db                    0.06      0.29    +0.23  ok
+am_rate_hz                 28.31     11.75           .
+lsd_db                      2.25      2.06    -0.19  ok
+pre_echo_db              -160.01   -127.47   +32.54  ok
+flam_db                     1.26      1.52    +0.26  ok
+attack_smear                1.05      1.19    +0.14  ok
+disc_db                    -0.09      1.18    +1.27  ok
+fm_rough_cents              0.70         -           .
+am_rough_db                 0.11         -           .
+env_mod_db                  0.20         -           .
+env_mod_note_db             0.47         -           .
+env_mod_hi_db               0.46         -           .
+grain_noise_p90_db        -54.79         -           .
+level_db                    0.30      0.07    -0.23  ok
+nonfinite                   0.00      0.00    -0.00  ok
+cpu_ns_per_sample         516.74         -           .
+cpu_worst_block_pct        95.50         -           .
+-- 0 metric(s) worse than ref beyond tolerance
+
+run: results\shift-smooth\20260918-120908-quick-G2-quick  jobs=40  render 0s  process 7s  measure 17s
