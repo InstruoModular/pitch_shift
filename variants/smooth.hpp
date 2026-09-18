@@ -167,6 +167,18 @@ class Shift_smooth
         static inline int   ola_mode = 0;
         static inline float ola_periods = 2.f;          /* grain length in (output) periods */
         static inline int   ola_hop_div = 2;            /* R4: grains per hop -- 2 = 50 % overlap, 3/4 = more grains averaged */
+        /* G1: crossfade length as a fraction of the grain, decoupled from the hop. 0.5 = the R3/R4 Hann engine
+         * (every sample is the sum of two grains); smaller = a flat single-grain stretch with a short equal-power
+         * crossfade at each jump, so partials that are not exact multiples of the detected period only comb during
+         * the fade instead of continuously. Ignored unless > 0. */
+        static inline float ola_xfade_frac = 0.5f;
+
+        /* G2: octave-safe period. YIN takes the FIRST dip under the threshold, which on a guitar whose 2nd harmonic
+         * dominates is p/2. A jump of half a period inverts every odd harmonic, so the overlapped grains cancel
+         * them -- the measured 9-12 dB partial dropouts. After choosing tau, look for a deeper dip at 2*tau (and
+         * 4*tau) and prefer it: a true octave error scores much better at the real period, while a genuinely
+         * short-period note has no such dip. 0 = off. */
+        static inline float yin_octave_tol = 0.f;
         static inline float ola_min_len = 256.f;        /* output samples */
         static inline float ola_max_len = 1024.f;       /* output samples */
         static inline float ola_lag_extra = 0.f;        /* extra target lag (input samples) */
@@ -319,6 +331,7 @@ class Shift_smooth
             bool     active{false};
             bool     kill{false};    // R3c: retiring after an onset
             float    fade{1.f};      // R3c
+            uint32_t xf{0};          // G1: crossfade half-length (samples)
         };
         std::array<OlaGrain, 4> grains{};   // R3
         float                   weak_period{256.f};   // R3j

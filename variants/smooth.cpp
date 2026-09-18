@@ -429,6 +429,24 @@ void Shift_smooth::_yin_finalise()
         return;
     }
 
+    /* G2: subharmonic (octave-down) check -- see yin_octave_tol. */
+    if(yin_octave_tol > 0.f && chosen > 0)
+    {
+        for(int rep = 0; rep < 2; rep++)
+        {
+            const size_t t2 = chosen * 2u;
+            if(t2 + 1u > yin_max_lag) break;
+            /* the dip near 2*tau can sit a sample or two either side */
+            size_t best = t2;
+            const size_t w = (chosen / 16u) + 2u;
+            const size_t lo = (t2 > w) ? (t2 - w) : yin_min_lag;
+            const size_t hi = ((t2 + w) < yin_max_lag) ? (t2 + w) : yin_max_lag;
+            for(size_t tau = lo; tau <= hi; tau++) if(yin_d[tau] < yin_d[best]) best = tau;
+            if(yin_d[best] >= yin_octave_tol * yin_d[chosen]) break;
+            chosen = best;
+        }
+    }
+
     float tau_f = static_cast<float>(chosen);
     if(chosen > yin_min_lag && chosen < yin_max_lag)
     {
@@ -1143,6 +1161,14 @@ void Shift_smooth::_ola_spawn(int youngest, bool at_min, bool presearch)
     g.active = true;
     g.kill = false;
     g.fade = 1.f;
+    /* G1: crossfade half-length. At >= 0.5 this is the original Hann grain (len/2); below it, a flat middle with
+     * short fades, floored at 16 samples so the fade stays click-free. */
+    {
+        const float xf_f = tairm::clamp(ola_xfade_frac, 0.02f, 0.5f) * static_cast<float>(len);
+        uint32_t xf = static_cast<uint32_t>(tairm::max(xf_f, 16.f));
+        if(xf > len / 2u) xf = len / 2u;
+        g.xf = xf;
+    }
     pre_valid = false;   // R3i
     /* debug: "<t> G <lag_new> <p_in> <valid> <len> <at_min> <score>" */
     if(FILE* ev = events_file()) std::fprintf(ev, "%u G %.2f %.2f %d %u %d %.3f\n", w_abs - static_cast<uint32_t>(history_size), lag_new, p_in,
@@ -1233,7 +1259,15 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
             if(gy.age < half && gy.age + static_cast<uint32_t>(ola_presearch) >= half) _ola_spawn(youngest, false, true);
         }
         const uint32_t hop_div = static_cast<uint32_t>(idsp::min<int>(idsp::max<int>(ola_hop_div, 2), 4));   // R4
-        if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= grains[static_cast<size_t>(youngest)].len / hop_div)
+        uint32_t hop_at = 0u;
+        if(youngest >= 0)
+        {
+            const OlaGrain& gy = grains[static_cast<size_t>(youngest)];
+            /* G1: the hop is len - xf (so the fades of consecutive grains abut); the R4 hop_div still applies to
+             * the Hann case, where xf = len/2. */
+            hop_at = (ola_xfade_frac >= 0.5f) ? (gy.len / hop_div) : (gy.len - gy.xf);
+        }
+        if(youngest < 0 || grains[static_cast<size_t>(youngest)].age >= hop_at)
         {
             _ola_spawn(youngest);
         }
@@ -1243,8 +1277,14 @@ void Shift_smooth::_process_ola(const MonoDspBuffer& input, MonoDspBuffer& outpu
         for(auto& g : grains)
         {
             if(!g.active) continue;
-            const float ph = (static_cast<float>(g.age) + 0.5f) / static_cast<float>(g.len);
-            const float s  = std::sin(idsp::pi * ph);
+            /* G1: equal-power trapezoid -- sin^2 rise over xf, flat, sin^2 fall over xf. xf = len/2 gives the
+             * original Hann grain exactly. */
+            const float a_f = static_cast<float>(g.age) + 0.5f;
+            const float xf_f = static_cast<float>(g.xf);
+            float s;
+            if(a_f < xf_f)                                   s = std::sin(0.5f * idsp::pi * (a_f / xf_f));
+            else if(a_f > static_cast<float>(g.len) - xf_f)  s = std::sin(0.5f * idsp::pi * ((static_cast<float>(g.len) - a_f) / xf_f));
+            else                                             s = 1.f;
             if(g.kill)   // R3c
             {
                 g.fade -= 1.f / tairm::max(ola_kill_len, 1.f);
@@ -1315,6 +1355,8 @@ template<> bool ShiftAdapter<Shift_smooth>::set_param(const std::string& name, d
     if(name == "ola_onsets")           { Shift_smooth::ola_onsets = static_cast<int>(v + 0.5f); return true; }
     if(name == "ola_kill_len")         { Shift_smooth::ola_kill_len = v;           return true; }
     if(name == "ola_mode")             { Shift_smooth::ola_mode = static_cast<int>(v + 0.5f); return true; }
+    if(name == "yin_octave_tol")       { Shift_smooth::yin_octave_tol = v;        return true; }
+    if(name == "ola_xfade_frac")       { Shift_smooth::ola_xfade_frac = v;        return true; }
     if(name == "ola_hop_div")          { Shift_smooth::ola_hop_div = static_cast<int>(v + 0.5f); return true; }
     if(name == "ola_periods")          { Shift_smooth::ola_periods = v;            return true; }
     if(name == "ola_min_len")          { Shift_smooth::ola_min_len = v;            return true; }

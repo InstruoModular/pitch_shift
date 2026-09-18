@@ -69,6 +69,23 @@ ola_coarse=1;ola_coarse_cands=2;ola_fine_window=256;yin_weak_threshold=0.5;yin_w
 yin_burst=16;yin_onset_restart=43. Quick + full regression running (tags R3n-quick, R3n-full); then retime alone,
 fold `--set` those params `--out .`, identity check shift:current vs shift:smooth, rebuild shift_capi +
 ShiftListen_SyncDll, smoke_plugin.py, RESULTS.md from scratchpad draft, commit, ask user to re-listen.
+**GUITAR SESSION 2026-09-18 (G0-G2, experiments.md; details in findings.md "GUITAR VERDICT").** User supplied
+`samples/` guitar recordings where shift is audibly worse than Archetype. New tool `analysis/real_partials.py`
+(per-window sinusoid tracking; real_audio.py's single f0 contour octave-flips on guitar and cannot read chords)
+reproduces the verdict: 10-15 % of partial observations 6-10 dB low vs Archetype's 0 %. ROOT CAUSE = wrong OLA jump
+quantum, dominated by YIN picking p/2 (first-dip rule + strong 2nd harmonic) -> half-period jumps invert odd
+harmonics -> the overlapped grains cancel them. With the right period the OLA engine is transparent (0 to -0.3 dB).
+CANDIDATE (in variants/smooth, NOT folded): `yin_octave_tol=0.85` -- Pluck/Bow +7 partials >6 dB low 11.8 -> 0.8 %
+(Arch 0.0), p10 -7.90 -> -0.18 dB (Arch -0.15), warble 11.5 -> 5.2 c, am 2.13 -> 1.26 dB; sax unaffected;
+quick 0 worse, full 1 worse (ppitch 9.31 = same as shipped), real 5 worse (same 5 as shipped, 3 of them better).
+**NEXT:** CPU retime alone (suite numbers 99-105 % are parallel-run noise; the check itself is ~30 compares/frame),
+then fold `tools/fold_variant.py smooth --set "<R3u+P3 params>;yin_octave_tol=0.85"` --out ., identity check,
+rebuild shift_capi + ShiftListen_SyncDll, smoke_plugin.py, ask the user to re-listen to Pluck/Bow.
+**THEN:** the chord loop (Guitar Loop Abmin) is only 10.1 -> 9.4 % -- its wrong quanta come from re-attacks and
+chords with no short common period (yin_per_block/weak-period path; faster locking helps cancellation but costs
+warble), and attack windows before the first lock are still -17 dB. `ola_xfade_frac` (new, default 0.5 = old
+engine bit-for-bit) halves cancellation at 0.125 but adds splice roughness -- a lever for that work.
+
 **SHIPPED 2026-09-16: R3u is in shift.hpp/shift.cpp** (re-folded over R3p after the sax regression; identity-checked
 bit-exact; CPU worst block 82.5-84.1 %). R3u = R3p minus the YIN onset burst/restart (`yin_burst=0`,
 `yin_onset_restart=0`), keeping `yin_max_lag=450`. Why: the restart mis-locks on sustained wind material -- sax fm

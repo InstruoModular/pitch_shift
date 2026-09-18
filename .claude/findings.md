@@ -336,6 +336,38 @@
 - Machine: with Ableton Live open (~670 MB) free RAM sits ~0.8 GB and background harness runs get killed even at
   --workers 1; run checks in the foreground one at a time, or ask the user to close Ableton during regressions.
 
+## GUITAR VERDICT (2026-09-18) -- the user's own samples, and the cause of "the pitch scrambles"
+- Material: `samples/Guitar Pluck and Bow G.aif` (18.5 s, sustained G2 98 Hz then G4 392 Hz, AIFF 24-bit stereo
+  44.1 k -- scipy cannot read AIFF, convert first), `samples/Guitar Loop Abmin 160 bpm.wav` (12 s chord loop),
+  `samples/Loveline TL E 100 bpm.wav`. User: on Pluck/Bow "the pitch modulates clearly ... like it loses confidence
+  and the pitch starts to scramble up and down"; on Abmin "granular distortions for both, but on shift noticeably louder".
+- `analysis/real_audio.py --mono-f0` CANNOT read this material: its one f0 contour octave-flips on a guitar whose
+  2nd harmonic dominates, so it reports Archetype at 112 c FM at -12. Use `analysis/real_partials.py` instead
+  (per-window sinusoid tracking, no contour, works on chords). Floor check at 0 st: 0.4 c / 0.07 dB / 0 % lost.
+- THE MEASUREMENT THAT MATCHES THE EARS = partial LEVEL transfer, not noise floor. Median partial level error is
+  ~0 dB for shift, but 10-15 % of partial observations are 6-10 dB low, in bursts of 125-250 ms. Archetype: 0 %,
+  p10 -0.2 dB. Inter-partial noise (tnr_drop) does NOT discriminate -- the hash is the partials wobbling, not a floor.
+- ROOT CAUSE (event trace vs per-window dips, Pluck/Bow -7): **every dip is a wrong OLA jump quantum.** The engine's
+  p_in reads 243.9 when the true period is 488 -- YIN's "first dip under threshold" rule picks p/2 whenever the 2nd
+  harmonic dominates (exactly this guitar). A jump of half a period shifts partial k by pi*k, so the overlapped
+  grains INVERT and cancel every odd harmonic: the 9-12 dB dropouts. Other wrong quanta: the 256-sample fallback
+  before the first lock (-17 to -20 dB) and a stale period across a note change (-15 dB at the G2->G4 move).
+  When p_in is right the OLA engine is transparent: 0.0 to -0.3 dB, warble ~0.
+- NOT the cause (each tested and rejected): string inharmonicity (B = 0, 4e-5, 2e-4 give identical cancellation);
+  the alignment search (full-rate ola_coarse=0, coarse_cands=4, fine_window 512, fine_reach 6 are all within noise);
+  overlap depth (hop_div 3 is worse, periods 4 is neutral).
+- FIX (variants/smooth, `yin_octave_tol`, default 0 = off; 0.85 tested): after YIN picks tau, look for a dip near
+  2*tau (window +-tau/16+2, repeated twice for 4x) and adopt it when d'(2tau) < tol * d'(tau). A real octave error
+  scores much better at the true period; a genuinely short-period note has no such dip. ~30 comparisons per frame,
+  no extra correlation work -- d' is already computed out to yin_max_lag.
+  Pluck/Bow +7: partials >6 dB low 11.8 -> 0.8 % (Arch 0.0), p10 -7.90 -> -0.18 dB (Arch -0.15), warble 11.5 -> 5.2 c,
+  am 2.13 -> 1.26 dB. Sax unaffected (this is why it is safe where yin_burst/onset_restart were not).
+- REMAINING after the fix: (a) the chord loop, whose wrong quanta come from re-attacks and chords with no short
+  common period (10.1 -> 9.4 % only) -- that is the yin_per_block / weak-period path, where faster locking helps
+  cancellation but costs warble; (b) attack windows before the first lock; (c) Pluck/Bow -7 warble 19 c vs Arch 7.
+- `ola_xfade_frac` (also new, default 0.5 = the old Hann engine bit-for-bit) decouples the crossfade from the hop.
+  At 0.125 it halves the cancellation but adds splice roughness; keep for later work on the chord/attack cases.
+
 ## Listening plugin (tools/listen_plugin)
 - MSVC cannot compile shift.cpp: isl needs /Zc:__cplusplus, then C3615 (constexpr tairm::min/max wrapping std::fmin,
   idsp::SVFilter::set_parameters wrapping std::tan) persists even with /std:c++latest; plus __builtin_memcpy.
