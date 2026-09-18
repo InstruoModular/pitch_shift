@@ -1,0 +1,105 @@
+{
+  // Build tasks for the Shift Listen plugin (tools/listen_plugin/README.md) and the measurement harness.
+  // The DSP and the plugin live in two separate CMake trees: shift.cpp needs MSYS2 g++ (GCC-isms MSVC rejects),
+  // JUCE needs MSVC. "Shift Listen: rebuild + smoke" runs the whole chain in the right order.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Shift Listen: rebuild + smoke",
+      "detail": "shift_capi.dll (g++) -> plugin (MSVC, always re-copies the DLL) -> bit-exactness check",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Shift Listen: build DSP dll",
+        "Shift Listen: build plugin",
+        "Shift Listen: smoke test"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Shift Listen: build DSP dll",
+      "detail": "compiles the repo-root shift.cpp into build/bench/shift_capi.dll",
+      "type": "shell",
+      "command": "$env:PATH = \"C:\\msys64\\ucrt64\\bin;$env:PATH\"; cmake --build build/bench --target shift_capi",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-NonInteractive", "-Command"]
+        }
+      },
+      "group": "build",
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Shift Listen: build plugin",
+      "detail": "ShiftListen_SyncDll: builds VST3 + Standalone AND always copies the current DSP dll into them",
+      "type": "shell",
+      "command": "\"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat\" && cmake --build build/host --target ShiftListen_SyncDll -j 2",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+      },
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Shift Listen: smoke test",
+      "detail": "plugin output must equal shiftbench current, delayed by one firmware block (prints SMOKE TEST: PASS)",
+      "type": "shell",
+      "command": "python tools/smoke_plugin.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-NonInteractive", "-Command"]
+        }
+      },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Shift Listen: install VST3 (needs admin)",
+      "detail": "copies the bundle to C:\\Program Files\\Common Files\\VST3 - run VS Code elevated, then rescan in the DAW",
+      "type": "shell",
+      "command": "python tools/copy_plugin.py",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-NonInteractive", "-Command"]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Shift Listen: install VST3 (per-user, no admin)",
+      "detail": "copies the bundle to %LOCALAPPDATA%\\Programs\\Common\\VST3 - most DAWs scan this too",
+      "type": "shell",
+      "command": "python tools/copy_plugin.py --user",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-NonInteractive", "-Command"]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "shiftbench: build harness",
+      "detail": "build/bench/shiftbench.exe - needed before any suite or probe run",
+      "type": "shell",
+      "command": "$env:PATH = \"C:\\msys64\\ucrt64\\bin;$env:PATH\"; cmake --build build/bench",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-NonInteractive", "-Command"]
+        }
+      },
+      "group": "build",
+      "problemMatcher": "$gcc"
+    }
+  ]
+}

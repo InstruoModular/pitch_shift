@@ -17,7 +17,15 @@ Verified bit-exact: plugin output == `shiftbench current`, delayed by exactly on
 
 ## Install
 
-Copy the whole `Shift Listen.vst3` folder to `C:\Program Files\Common Files\VST3\`, then rescan plugins in the DAW.
+```powershell
+python tools/copy_plugin.py          # C:\Program Files\Common Files\VST3 (needs an elevated terminal)
+python tools/copy_plugin.py --user   # %LOCALAPPDATA%\Programs\Common\VST3 (no admin)
+```
+Then rescan plugins in the DAW. The script refuses to install a bundle whose `shift_capi.dll` is older than
+`shift.cpp` (`--force` overrides), which is the stale-DSP trap described below.
+
+In VS Code, `.vscode/tasks.json` has these as tasks: **Shift Listen: rebuild + smoke** (Ctrl+Shift+B) runs the
+DLL build, the plugin build and the smoke test in order, and there are separate install tasks.
 
 ## Using it
 
@@ -41,7 +49,8 @@ cmd /c '"C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Buil
 ```
 
 Always build `ShiftListen_SyncDll`, not the format targets. When only `shift.cpp` changed, the plugin itself doesn't
-relink, so a post-build copy never runs and the bundle keeps the old DSP. Then re-copy the bundle into the VST3 folder.
+relink, so a post-build copy never runs and the bundle keeps the old DSP. Then re-copy the bundle into the VST3 folder
+(`python tools/copy_plugin.py`).
 
 ## Why a DLL
 
